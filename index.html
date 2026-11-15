@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>San Mark Fertilization &amp; Spraying</title>
+<style>
+:root{--g:#2e7d32;--g2:#e8f5e9;--bd:#cfd8cf;--tx:#1b2b1b;--mut:#6a766a;--bg:#f4f7f4;--warn:#b26a00;--bad:#b3261e}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:Tahoma,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:76px;font-size:15px}
+header{background:var(--g);color:#fff;padding:10px 14px;position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center;gap:8px}
+header h1{font-size:17px;margin:0}
+header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;padding:7px 12px;font:inherit}
+nav{position:fixed;bottom:0;right:0;left:0;display:flex;background:#fff;border-top:1px solid var(--bd);z-index:20;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:13px 2px;border:0;background:none;font:inherit;font-size:14px;color:var(--mut);border-top:3px solid transparent}
+nav button.on{color:var(--g);font-weight:700;border-top-color:var(--g)}
+main{padding:12px;max-width:1100px;margin:0 auto}
+select,input,textarea{font:inherit;padding:9px;border:1px solid var(--bd);border-radius:8px;width:100%;background:#fff;color:var(--tx)}
+textarea{min-height:70px;resize:vertical}
+label{display:block;font-size:13px;color:var(--mut);margin-bottom:2px}
+.btn{background:var(--g);color:#fff;border:0;border-radius:9px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer}
+.btn.sec{background:#fff;color:var(--g);border:1px solid var(--g)}
+.btn.warn{background:#fff;color:var(--bad);border:1px solid var(--bad)}
+.btn.sm{padding:7px 10px;font-size:13px;font-weight:600}
+.link{background:none;border:0;color:var(--g);font:inherit;font-size:14px;padding:6px 0;cursor:pointer;text-align:right}
+.card{background:#fff;border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
+.card h3{margin:0 0 8px;font-size:16px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.mut{color:var(--mut);font-size:13px}
+.bar{display:grid;gap:8px;margin-bottom:8px}
+.wn{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;margin:8px 0}
+.wn .btn{padding:9px 12px}
+details.day{background:#fff;border:1px solid var(--bd);border-radius:10px;margin:8px 0}
+details.day>summary{padding:12px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:8px;align-items:center}
+details.day>summary::-webkit-details-marker{display:none}
+details.day.today{border-color:var(--g);box-shadow:0 0 0 1px var(--g)}
+details.day .dn{font-weight:700}
+details.day .dsum{font-size:12.5px;color:var(--mut);text-align:left}
+details.day.has>summary{background:var(--g2);border-radius:10px}
+.day .body{padding:4px 12px 12px;display:grid;gap:8px}
+.sub{font-weight:700;color:var(--g);margin-top:4px}
+.fr{display:grid;grid-template-columns:1fr 92px;gap:6px}
+.hid{display:none}
+.savebar{position:fixed;right:0;left:0;bottom:calc(52px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:8px;z-index:15;justify-content:center}
+.savebar .btn{flex:1;max-width:260px}
+.savebar.dirty{background:#fff8e1;border-top-color:#f9a825}
+.tw{overflow:auto;border:1px solid var(--bd);border-radius:10px;background:#fff;max-height:70vh}
+table.t{border-collapse:collapse;font-size:13px;width:100%}
+table.t th,table.t td{border:1px solid #e1e6e1;padding:6px 8px;text-align:center;white-space:nowrap}
+table.t th{background:var(--g2);position:sticky;top:0;z-index:2}
+table.t td:first-child,table.t th:first-child{position:sticky;right:0;background:#fff;text-align:right;font-weight:600;z-index:1}
+table.t th:first-child{background:var(--g2);z-index:3}
+table.t tr.tot td{background:#fff3cd;font-weight:700}
+table.t td.ann,table.t th.ann{background:#fff3cd;font-weight:700}
+table.wo td{white-space:normal;text-align:right;vertical-align:top;min-width:70px}
+table.wo td:first-child{white-space:nowrap}
+.chip{display:inline-block;background:var(--g2);color:var(--g);border-radius:20px;padding:2px 10px;font-size:12.5px}
+.chip.s1{background:#fff3cd;color:#7a5200}.chip.s2{background:#c8e6c9;color:#1b5e20}.chip.s3{background:#fde0dc;color:var(--bad)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:center;justify-content:center;padding:14px}
+.mbox{background:#fff;border-radius:14px;padding:16px;width:100%;max-width:440px;max-height:90vh;overflow:auto;display:grid;gap:10px}
+.mbox h3{margin:0}
+.chk{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.chk label{display:flex;gap:6px;align-items:center;color:var(--tx);font-size:14px}
+.chk input{width:auto}
+#busy{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#263238;color:#fff;padding:8px 16px;border-radius:20px;z-index:60;display:none}
+#toast{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:#263238;color:#fff;padding:10px 18px;border-radius:10px;z-index:60;display:none;max-width:90%;text-align:center}
+#login{max-width:420px;margin:40px auto;padding:0 16px}
+.croprow{display:grid;grid-template-columns:1fr 90px auto;gap:6px;margin-bottom:6px}
+@media print{header,nav,.noprint,.savebar,#busy,#toast{display:none!important}body{background:#fff;padding:0}.card{border:0;padding:0}.tw{max-height:none;border:0}table.t th{position:static}}
+</style>
+</head>
+<body>
+
+<div id="login" style="display:none">
+  <div class="card">
+    <h3 dir="ltr" style="text-align:right">San Mark Fertilization &amp; Spraying</h3>
+    <p class="mut">أول مرة بس: الصق رابط الـ Web app والكود السري.</p>
+    <label>رابط Web app (Apps Script)</label>
+    <input id="lApi" dir="ltr" placeholder="https://script.google.com/macros/s/.../exec">
+    <label style="margin-top:8px">الكود السري</label>
+    <input id="lCode" dir="ltr" type="password">
+    <p id="lErr" style="color:var(--bad)"></p>
+    <button class="btn" id="lGo" style="width:100%">دخول</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1>
+    <button id="reload">تحديث</button>
+  </header>
+  <main id="view"></main>
+  <nav id="nav"></nav>
+</div>
+<div id="busy">جاري التحميل…</div>
+<div id="toast"></div>
+
+<script>
+// ممكن تحط رابط الـ Web app هنا بدل ما تكتبه في الشاشة الأولى
+const API_DEFAULT = '';
+
+/* ================= أدوات ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const parse = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const dm = d => pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
+const dayName = d => ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][d.getDay()];
+const fmt = n => { n = Number(n); if (!n) return ''; return String(Math.round(n * 10) / 10); };
+const num = v => (String(v).trim() === '' || isNaN(parseFloat(v))) ? '' : parseFloat(v);
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch (e) {} },
+  del(k){ try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+let API = store.get('api') || API_DEFAULT, CODE = store.get('code') || '';
+const S = { crops: [], lists: { fert: [], stage: [], spray: [] }, settings: {}, program: new Map(), orders: {},
+            tab: 'program', crop: '', week: 1, dirty: false, tCrop: '*', tMode: 'feddan' };
+
+const startDate = () => parse(S.settings.startDate || '2026-11-01');
+const weekStart = w => addDays(startDate(), (w - 1) * 7);
+const weekOfIso = s => Math.floor(Math.round((parse(s) - startDate()) / 86400000) / 7) + 1;
+const curWeek = () => Math.min(52, Math.max(1, weekOfIso(iso(new Date()))));
+const tank = () => S.settings.tank || 1200;
+const areaOf = name => (S.crops.find(c => c.name === name) || {}).area || 0;
+
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 2600); }
+function busy(on){ $('#busy').style.display = on ? 'block' : 'none'; }
+
+async function api(action, payload){
+  busy(true);
+  try {
+    let r;
+    if (!payload) r = await fetch(API + '?action=' + action + '&code=' + encodeURIComponent(CODE));
+    else r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, code: CODE, ...payload }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'حصل خطأ');
+    return j;
+  } finally { busy(false); }
+}
+
+/* ================= البيانات ================= */
+const blank = () => ({ stage: '', irr: '', freq: '', f: Array.from({ length: 6 }, () => ({ n: '', q: '' })), spray: '', sq: '', mech: '', notes: '' });
+const isEmpty = o => !(o.stage || String(o.irr).trim() || String(o.freq).trim() || o.f.some(x => x.n || String(x.q).trim()) || o.spray || String(o.sq).trim() || o.mech || o.notes);
+
+function rowToObj(r){
+  const o = blank();
+  o.crop = String(r[0]); o.date = String(r[1]); o.stage = r[2]; o.irr = r[3]; o.freq = r[4];
+  for (let i = 0; i < 6; i++) o.f[i] = { n: r[5 + i * 2] || '', q: r[6 + i * 2] };
+  o.spray = r[17]; o.sq = r[18]; o.mech = r[19]; o.notes = r[20];
+  return o;
+}
+function objToRow(crop, date, o){
+  const r = [crop, date, o.stage, num(o.irr), num(o.freq)];
+  o.f.forEach(x => r.push(x.n, num(x.q)));
+  r.push(o.spray, o.sq, o.mech, o.notes);
+  return r;
+}
+
+async function load(){
+  const j = await api('getAll');
+  S.crops = j.crops; S.lists = j.lists; S.settings = j.settings; S.orders = j.orders;
+  S.program = new Map();
+  j.program.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
+  if (!S.crops.find(c => c.name === S.crop)) S.crop = (S.crops[0] || {}).name || '';
+  if (!S.tCrop || (S.tCrop !== '*' && !S.crops.find(c => c.name === S.tCrop))) S.tCrop = '*';
+}
+
+/* ================= الدخول ================= */
+function showLogin(msg){
+  $('#app').style.display = 'none'; $('#login').style.display = 'block';
+  $('#lApi').value = API || ''; $('#lCode').value = ''; $('#lErr').textContent = msg || '';
+}
+$('#lGo').onclick = async () => {
+  API = $('#lApi').value.trim(); CODE = $('#lCode').value.trim();
+  if (!API || !CODE) { $('#lErr').textContent = 'اكتب الرابط والكود'; return; }
+  try { await load(); store.set('api', API); store.set('code', CODE); startApp(); }
+  catch (e) { $('#lErr').textContent = 'مقدرتش أدخل: ' + e.message; }
+};
+
+async function boot(){
+  if (!API || !CODE) return showLogin();
+  try { await load(); startApp(); } catch (e) { showLogin(e.message); }
+}
+function startApp(){
+  $('#login').style.display = 'none'; $('#app').style.display = 'block';
+  S.week = curWeek();
+  renderNav(); render();
+}
+$('#reload').onclick = async () => {
+  if (S.dirty && !confirm('فيه تعديلات متحفظتش. تحديث هيمسحها؟')) return;
+  try { await load(); S.dirty = false; render(); toast('اتحدّث'); } catch (e) { toast(e.message); }
+};
+
+/* ================= التنقل ================= */
+const TABS = [['program', 'البرنامج'], ['totals', 'الإجماليات'], ['order', 'أمر التشغيل'], ['settings', 'الإعدادات']];
+function renderNav(){
+  $('#nav').innerHTML = TABS.map(([k, n]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${n}</button>`).join('');
+}
+$('#nav').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tab]'); if (!b) return;
+  if (S.dirty && S.tab === 'program' && !confirm('فيه تعديلات متحفظتش. تكمل من غير حفظ؟')) return;
+  S.dirty = false; S.tab = b.dataset.tab; renderNav(); render();
+});
+function render(){
+  const v = $('#view');
+  if (S.tab === 'program') viewProgram(v);
+  else if (S.tab === 'totals') viewTotals(v);
+  else if (S.tab === 'order') viewOrder(v);
+  else viewSettings(v);
+  window.scrollTo(0, 0);
+}
+
+function weekNav(){
+  const opts = Array.from({ length: 52 }, (_, i) => {
+    const w = i + 1, a = weekStart(w);
+    return `<option value="${w}" ${w === S.week ? 'selected' : ''}>أسبوع ${w} (${dm(a)} – ${dm(addDays(a, 6))})</option>`;
+  }).join('');
+  return `<div class="wn noprint"><button class="btn sec sm" data-act="wprev">السابق</button><select id="wsel">${opts}</select><button class="btn sec sm" data-act="wnext">التالي</button></div>`;
+}
+function setWeek(w){
+  w = Math.min(52, Math.max(1, w));
+  if (S.dirty && !confirm('فيه تعديلات متحفظتش. تكمل من غير حفظ؟')) { render(); return; }
+  S.dirty = false; S.week = w; render();
+}
+
+/* ================= شاشة البرنامج ================= */
+function sel(kind, val, key){
+  const L = S.lists[kind].slice();
+  if (val && !L.includes(val)) L.push(val);
+  return `<select data-kind="${kind}" data-k="${key}"><option value="">— اختر —</option>${L.map(x => `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('')}<option value="__new__">＋ إضافة اسم جديد…</option></select>`;
+}
+function summaryOf(o){
+  const p = [];
+  if (o.irr) p.push('ري ' + o.irr + 'د×' + (o.freq || 1));
+  const nf = o.f.filter(x => x.n).length; if (nf) p.push(nf + ' سماد');
+  if (o.spray) p.push('رش');
+  if (o.mech) p.push('ميكانيكي');
+  return p.join(' · ') || 'فاضي';
+}
+function dayCard(i, o, open){
+  const d = addDays(weekStart(S.week), i), key = iso(d);
+  o = o || S.program.get(S.crop + '|' + key) || blank();
+  const filled = o.f.reduce((m, x, j) => (x.n || String(x.q).trim()) ? j : m, -1);
+  const shown = Math.max(1, filled + 1);
+  const today = key === iso(new Date());
+  const fr = o.f.map((x, j) => `<div class="fr ${j >= shown ? 'hid' : ''}">${sel('fert', x.n, 'fn')}<input data-k="fq" type="number" inputmode="decimal" step="any" placeholder="كجم/فدان" value="${esc(x.q)}"></div>`).join('');
+  return `<details class="day ${today ? 'today' : ''} ${isEmpty(o) ? '' : 'has'}" data-i="${i}" data-iso="${key}" ${open ? 'open' : ''}>
+    <summary><span class="dn">${dayName(d)} ${dm(d)}${today ? ' (النهارده)' : ''}</span><span class="dsum">${esc(summaryOf(o))}</span></summary>
+    <div class="body">
+      <div><label>المرحلة</label>${sel('stage', o.stage, 'stage')}</div>
+      <div class="row2">
+        <div><label>مدة الري (دقيقة)</label><input data-k="irr" type="number" inputmode="decimal" step="any" value="${esc(o.irr)}"></div>
+        <div><label>عدد الريات في اليوم</label><input data-k="freq" type="number" inputmode="decimal" step="any" value="${esc(o.freq)}"></div>
+      </div>
+      <div class="sub">التسميد (كمية لكل فدان)</div>
+      ${fr}
+      <button class="link" data-act="morefert">+ سماد آخر (لحد 6)</button>
+      <div class="sub">الرش (لكل ${tank()} لتر)</div>
+      <div class="fr">${sel('spray', o.spray, 'spray')}<input data-k="sq" placeholder="الكمية" value="${esc(o.sq)}"></div>
+      <div><label>المعاملات الميكانيكية</label><input data-k="mech" value="${esc(o.mech)}"></div>
+      <div><label>ملاحظات</label><textarea data-k="notes">${esc(o.notes)}</textarea></div>
+      <div class="row2"><button class="btn sec sm" data-act="copyprev">نسخ من اليوم السابق</button><button class="btn warn sm" data-act="clearday">مسح اليوم</button></div>
+    </div></details>`;
+}
+function viewProgram(v){
+  if (!S.crops.length) { v.innerHTML = '<div class="card">ضيف محصول من الإعدادات الأول.</div>'; return; }
+  const todayIso = iso(new Date());
+  const inWeek = Array.from({ length: 7 }, (_, i) => iso(addDays(weekStart(S.week), i))).includes(todayIso);
+  v.innerHTML = `
+    <div class="bar"><div><label>المحصول</label><select id="cropSel">${S.crops.map(c => `<option ${c.name === S.crop ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div></div>
+    ${weekNav()}
+    <div id="days">${Array.from({ length: 7 }, (_, i) => dayCard(i, null, inWeek ? iso(addDays(weekStart(S.week), i)) === todayIso : i === 0)).join('')}</div>
+    <div class="savebar" id="sbar"><button class="btn" data-act="save">حفظ الأسبوع</button><button class="btn sec" data-act="copyweek">نسخ الأسبوع…</button></div>`;
+  S.dirty = false;
+}
+function readDay(card){
+  const g = k => { const e = card.querySelector('[data-k="' + k + '"]'); return e ? e.value : ''; };
+  const o = { stage: g('stage'), irr: g('irr'), freq: g('freq'), spray: g('spray'), sq: g('sq'), mech: g('mech'), notes: g('notes'), f: [] };
+  $$('.fr', card).forEach(r => { const n = r.querySelector('[data-k="fn"]'); if (n) o.f.push({ n: n.value, q: r.querySelector('[data-k="fq"]').value }); });
+  return o;
+}
+function markDirty(){ S.dirty = true; const b = $('#sbar'); if (b) b.classList.add('dirty'); }
+
+async function saveWeek(){
+  const cards = $$('#days .day'), rows = [], dates = [];
+  for (const c of cards) {
+    const o = readDay(c); dates.push(c.dataset.iso);
+    if (o.f.some(x => String(x.q).trim() !== '' && !x.n)) { c.open = true; toast('اختار اسم السماد للكمية المكتوبة'); return; }
+    if (!isEmpty(o)) rows.push(objToRow(S.crop, c.dataset.iso, o));
+  }
+  try {
+    await api('saveDays', { crop: S.crop, dates, rows });
+    dates.forEach(d => S.program.delete(S.crop + '|' + d));
+    rows.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
+    S.dirty = false; const b = $('#sbar'); if (b) b.classList.remove('dirty');
+    toast('تم حفظ الأسبوع');
+    cards.forEach(c => { const o = readDay(c); c.classList.toggle('has', !isEmpty(o)); c.querySelector('.dsum').textContent = summaryOf(o); });
+  } catch (e) { toast('الحفظ فشل: ' + e.message); }
+}
+
+function openCopy(){
+  const src = $$('#days .day').map(readDay);
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="mbox"><h3>نسخ أسبوع ${S.week} — ${esc(S.crop)}</h3>
+    <div class="mut">هينسخ الأسبوع ده (بالتعديلات الحالية) للمحاصيل والأسابيع المختارة، وبيستبدل أي حاجة مكتوبة فيها.</div>
+    <div class="chk">${S.crops.map(c => `<label><input type="checkbox" value="${esc(c.name)}" ${c.name === S.crop ? 'checked' : ''}> ${esc(c.name)}</label>`).join('')}</div>
+    <div class="row2"><div><label>من أسبوع</label><input id="cf" type="number" min="1" max="52" value="${Math.min(52, S.week + 1)}"></div>
+    <div><label>لحد أسبوع</label><input id="ct" type="number" min="1" max="52" value="${Math.min(52, S.week + 1)}"></div></div>
+    <div class="row2"><button class="btn" id="cgo">نسخ</button><button class="btn sec" id="ccl">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+  $('#ccl', m).onclick = () => m.remove();
+  $('#cgo', m).onclick = async () => {
+    const crops = $$('input[type=checkbox]:checked', m).map(x => x.value);
+    const a = parseInt($('#cf', m).value), b = parseInt($('#ct', m).value);
+    if (!crops.length || !(a >= 1 && b <= 52 && a <= b)) { toast('راجع المحاصيل والأسابيع'); return; }
+    try {
+      for (const crop of crops) {
+        const dates = [], rows = [];
+        for (let w = a; w <= b; w++) {
+          if (crop === S.crop && w === S.week) continue;
+          for (let i = 0; i < 7; i++) {
+            const d = iso(addDays(weekStart(w), i)); dates.push(d);
+            if (!isEmpty(src[i])) rows.push(objToRow(crop, d, src[i]));
+          }
+        }
+        if (!dates.length) continue;
+        await api('saveDays', { crop, dates, rows });
+        dates.forEach(d => S.program.delete(crop + '|' + d));
+        rows.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
+      }
+      m.remove(); toast('تم النسخ');
+    } catch (e) { toast('النسخ فشل: ' + e.message); }
+  };
+}
+
+function saveLists(){
+  api('saveLists', S.lists).then(() => toast('اتحفظ في القائمة')).catch(e => toast('فشل حفظ القائمة: ' + e.message));
+}
+function onSelChange(t){
+  const kind = t.dataset.kind, name = (prompt('اكتب الاسم الجديد:') || '').trim();
+  if (!name) { t.value = ''; return; }
+  if (!S.lists[kind].includes(name)) { S.lists[kind].push(name); saveLists(); }
+  $$('select[data-kind="' + kind + '"]').forEach(s => {
+    if (![...s.options].some(o => o.value === name)) s.add(new Option(name, name), s.options[s.options.length - 1]);
+  });
+  t.value = name;
+}
+
+/* ================= شاشة الإجماليات ================= */
+function aggregate(){
+  const res = {}; S.crops.forEach(c => res[c.name] = new Map());
+  for (const o of S.program.values()) {
+    if (!res[o.crop]) continue;
+    const w = weekOfIso(o.date); if (w < 1 || w > 52) continue;
+    for (const x of o.f) {
+      const q = parseFloat(x.q); if (!x.n || !q) continue;
+      let a = res[o.crop].get(x.n); if (!a) { a = new Array(53).fill(0); res[o.crop].set(x.n, a); }
+      a[w] += q;
+    }
+  }
+  return res;
+}
+function viewTotals(v){
+  const ag = aggregate();
+  const all = new Set(); Object.values(ag).forEach(m => m.forEach((_, k) => all.add(k)));
+  const ferts = [...all].sort((a, b) => { const i = S.lists.fert.indexOf(a), j = S.lists.fert.indexOf(b); return (i < 0 ? 999 : i) - (j < 0 ? 999 : j); });
+  const actual = S.tMode === 'actual';
+  const mult = c => actual ? areaOf(c) : 1;
+  const sum = a => a.reduce((s, x) => s + x, 0);
+
+  // جدول سنوي: محاصيل × أسمدة
+  let annual = `<table class="t"><tr><th>المحصول</th>${ferts.map(f => `<th>${esc(f)}</th>`).join('')}<th class="ann">الإجمالي</th></tr>`;
+  const colTot = new Array(ferts.length).fill(0);
+  S.crops.forEach(c => {
+    let rt = 0;
+    const cells = ferts.map((f, i) => { const a = ag[c.name].get(f); const x = a ? sum(a) * mult(c.name) : 0; colTot[i] += x; rt += x; return `<td>${fmt(x)}</td>`; }).join('');
+    annual += `<tr><td>${esc(c.name)}${actual ? ' <span class="mut">(' + c.area + ' فدان)</span>' : ''}</td>${cells}<td class="ann">${fmt(rt)}</td></tr>`;
+  });
+  if (actual) annual += `<tr class="tot"><td>إجمالي المزرعة</td>${colTot.map(x => `<td>${fmt(x)}</td>`).join('')}<td>${fmt(colTot.reduce((s, x) => s + x, 0))}</td></tr>`;
+  annual += '</table>';
+
+  // جدول أسبوعي
+  const all2 = S.tCrop === '*', wActual = all2 || actual;
+  let weekly = `<table class="t"><tr><th>السماد</th>${Array.from({ length: 52 }, (_, i) => `<th title="${dm(weekStart(i + 1))}">${i + 1}</th>`).join('')}<th class="ann">السنة</th></tr>`;
+  const wTot = new Array(53).fill(0);
+  ferts.forEach(f => {
+    const arr = new Array(53).fill(0);
+    S.crops.forEach(c => { if (!all2 && c.name !== S.tCrop) return; const a = ag[c.name].get(f); if (a) for (let w = 1; w <= 52; w++) arr[w] += a[w] * (wActual ? c.area : 1); });
+    if (!sum(arr)) return;
+    for (let w = 1; w <= 52; w++) wTot[w] += arr[w];
+    weekly += `<tr><td>${esc(f)}</td>${arr.slice(1).map(x => `<td>${fmt(x)}</td>`).join('')}<td class="ann">${fmt(sum(arr))}</td></tr>`;
+  });
+  weekly += `<tr class="tot"><td>إجمالي الأسبوع</td>${wTot.slice(1).map(x => `<td>${fmt(x)}</td>`).join('')}<td>${fmt(sum(wTot))}</td></tr></table>`;
+
+  v.innerHTML = `
+    <div class="card noprint"><div class="row2">
+      <div><label>الوحدة</label><select id="tMode"><option value="feddan" ${!actual ? 'selected' : ''}>كجم / فدان</option><option value="actual" ${actual ? 'selected' : ''}>كجم فعلي (× المساحة)</option></select></div>
+      <div><label>الجدول الأسبوعي لـ</label><select id="tCrop"><option value="*" ${all2 ? 'selected' : ''}>كل المزرعة</option>${S.crops.map(c => `<option ${c.name === S.tCrop ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
+    </div></div>
+    <div class="card"><h3>إجمالي السنة لكل سماد (${actual ? 'كجم فعلي' : 'كجم/فدان'})</h3><div class="tw">${ferts.length ? annual : '<p class="mut" style="padding:12px">لسه مفيش تسميد مسجل.</p>'}</div></div>
+    <div class="card"><h3>إجمالي الأسبوع لكل سماد — ${all2 ? 'كل المزرعة (كجم فعلي)' : esc(S.tCrop) + (wActual ? ' (كجم فعلي)' : ' (كجم/فدان)')}</h3><div class="tw">${ferts.length ? weekly : '<p class="mut" style="padding:12px">لسه مفيش تسميد مسجل.</p>'}</div></div>
+    <button class="btn sec noprint" onclick="window.print()">طباعة</button>
+    <p class="mut">الأسابيع محسوبة من تاريخ بداية البرنامج: ${dm(startDate())}/${startDate().getFullYear()}.</p>`;
+}
+
+/* ================= أمر التشغيل ================= */
+const STATUS = { '': 'مسودة', draft: 'مسودة', sent: 'مُرسل للمدير', approved: 'معتمد', returned: 'مُعاد للتعديل' };
+const statusLabel = s => STATUS[s || ''] || 'مسودة';
+const statusCls = s => s === 'approved' ? 's2' : (s === 'sent' ? 's1' : (s === 'returned' ? 's3' : ''));
+
+function sections(w){
+  const ws = weekStart(w), out = [];
+  S.crops.forEach(c => {
+    const rows = Array.from({ length: 7 }, (_, i) => { const d = addDays(ws, i); return { d, o: S.program.get(c.name + '|' + iso(d)) }; });
+    if (rows.some(r => r.o && !isEmpty(r.o))) out.push({ c, rows });
+  });
+  return out;
+}
+function viewOrder(v){
+  const w = S.week, ws = weekStart(w), secs = sections(w), od = S.orders[w] || {};
+  const tot = new Map();
+  secs.forEach(s => s.rows.forEach(r => { if (!r.o) return; r.o.f.forEach(x => { const q = parseFloat(x.q); if (!x.n || !q) return; let t = tot.get(x.n); if (!t) { t = { total: 0, by: {} }; tot.set(x.n, t); } t.total += q * s.c.area; t.by[s.c.name] = (t.by[s.c.name] || 0) + q * s.c.area; }); }));
+
+  const secHtml = secs.map(s => `<div class="card"><h3>${esc(s.c.name)} <span class="mut">— ${s.c.area} فدان</span></h3><div class="tw"><table class="t wo">
+    <tr><th>اليوم</th><th>المرحلة</th><th>الري</th><th>التسميد (فعلي)</th><th>الرش</th><th>ميكانيكي</th><th>ملاحظات</th></tr>
+    ${s.rows.filter(r => r.o && !isEmpty(r.o)).map(r => { const o = r.o; return `<tr><td>${dayName(r.d)}<br>${dm(r.d)}</td><td>${esc(o.stage)}</td>
+      <td>${o.irr ? esc(o.irr) + ' د × ' + esc(o.freq || 1) : ''}</td>
+      <td>${o.f.filter(x => x.n && parseFloat(x.q)).map(x => `${esc(x.n)}: <b>${fmt(x.q * s.c.area)} كجم</b> <span class="mut">(${esc(x.q)}/فدان)</span>`).join('<br>')}</td>
+      <td>${esc(o.spray)}${o.sq ? '<br>' + esc(o.sq) + ' / ' + tank() + ' لتر' : ''}</td><td>${esc(o.mech)}</td><td>${esc(o.notes)}</td></tr>`; }).join('')}
+  </table></div></div>`).join('');
+
+  const totHtml = tot.size ? `<div class="card"><h3>إجمالي الأسمدة المطلوبة للأسبوع (كجم)</h3><div class="tw"><table class="t"><tr><th>السماد</th><th class="ann">الإجمالي</th><th>التفصيل بالمحصول</th></tr>
+    ${[...tot.entries()].map(([n, t]) => `<tr><td>${esc(n)}</td><td class="ann">${fmt(t.total)}</td><td style="text-align:right;white-space:normal">${Object.entries(t.by).map(([c, x]) => esc(c) + ': ' + fmt(x)).join(' · ')}</td></tr>`).join('')}</table></div></div>` : '';
+
+  v.innerHTML = `${weekNav()}
+    <div class="card"><h3>أمر تشغيل أسبوعي — أسبوع ${w}</h3>
+      <div class="mut">من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
+      <div style="margin-top:6px">الحالة: <span class="chip ${statusCls(od.status)}">${statusLabel(od.status)}</span></div></div>
+    ${secs.length ? secHtml + totHtml : '<div class="card">مفيش برنامج مسجل للأسبوع ده. املاه من شاشة البرنامج.</div>'}
+    <div class="card noprint"><h3>الاعتماد</h3>
+      <div class="row2"><div><label>مهندس التنفيذ</label><input id="oEng" value="${esc(od.engineer || '')}"></div><div><label>مدير المزرعة</label><input id="oMgr" value="${esc(od.manager || '')}"></div></div>
+      <div style="margin-top:8px"><label>ملاحظة</label><input id="oNote" value="${esc(od.note || '')}"></div>
+      <div class="row2" style="margin-top:10px">
+        ${(!od.status || od.status === 'draft' || od.status === 'returned') ? '<button class="btn" data-st="sent">إرسال للمدير</button>' : ''}
+        ${od.status === 'sent' ? '<button class="btn" data-st="approved">اعتماد</button><button class="btn warn" data-st="returned">إرجاع للمهندس</button>' : ''}
+        ${od.status === 'approved' ? '<button class="btn sec" data-st="draft">إلغاء الاعتماد</button>' : ''}
+        <button class="btn sec" data-st="${od.status || 'draft'}">حفظ الأسماء بس</button>
+      </div></div>
+    <div class="row2 noprint"><button class="btn sec" data-act="wa">مشاركة / نسخ للواتساب</button><button class="btn sec" onclick="window.print()">طباعة</button></div>
+    <div class="card" style="display:none" id="signPrint"></div>`;
+}
+function waText(){
+  const w = S.week, ws = weekStart(w), od = S.orders[w] || {};
+  let t = `*أمر تشغيل أسبوعي — أسبوع ${w}* (${dm(ws)} – ${dm(addDays(ws, 6))})\nالحالة: ${statusLabel(od.status)}\n`;
+  if (od.engineer) t += `مهندس التنفيذ: ${od.engineer}\n`;
+  if (od.manager) t += `مدير المزرعة: ${od.manager}\n`;
+  sections(w).forEach(s => {
+    t += `\n*${s.c.name}* (${s.c.area} فدان)\n`;
+    s.rows.forEach(r => {
+      const o = r.o; if (!o || isEmpty(o)) return; const p = [];
+      if (o.stage) p.push(o.stage);
+      if (o.irr) p.push(`ري ${o.irr} د × ${o.freq || 1}`);
+      const fs = o.f.filter(x => x.n && parseFloat(x.q));
+      if (fs.length) p.push('تسميد: ' + fs.map(x => `${x.n} ${fmt(x.q * s.c.area)} كجم`).join('، '));
+      if (o.spray) p.push('رش: ' + o.spray + (o.sq ? ' ' + o.sq : ''));
+      if (o.mech) p.push('ميكانيكي: ' + o.mech);
+      if (o.notes) p.push('ملاحظات: ' + o.notes);
+      t += `${dayName(r.d)} ${dm(r.d)}: ${p.join(' | ')}\n`;
+    });
+  });
+  return t;
+}
+async function setStatus(st){
+  const rec = { week: S.week, status: st, engineer: $('#oEng').value.trim(), manager: $('#oMgr').value.trim(), note: $('#oNote').value.trim() };
+  try { await api('saveOrder', rec); S.orders[S.week] = { status: st, engineer: rec.engineer, manager: rec.manager, note: rec.note, updated: new Date().toISOString() }; toast('اتحفظ'); render(); }
+  catch (e) { toast('فشل: ' + e.message); }
+}
+
+/* ================= الإعدادات ================= */
+function viewSettings(v){
+  v.innerHTML = `
+    <div class="card"><h3>بداية البرنامج</h3>
+      <label>تاريخ أول يوم في الأسبوع 1</label>
+      <input type="date" id="sStart" value="${esc(S.settings.startDate || '2026-11-01')}">
+      <button class="btn" style="margin-top:8px" data-act="savestart">حفظ التاريخ</button></div>
+    <div class="card"><h3>المحاصيل والمساحات</h3><div id="cropRows">
+      ${S.crops.map(c => cropRow(c.name, c.area, c.name)).join('')}</div>
+      <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="addcrop">+ محصول</button><button class="btn" data-act="savecrops">حفظ المحاصيل</button></div>
+      <p class="mut">لو غيّرت اسم محصول، بياناته القديمة بتتنقل للاسم الجديد.</p></div>
+    <div class="card"><h3>القوائم المنسدلة</h3><p class="mut">اسم في كل سطر.</p>
+      <label>الأسمدة</label><textarea id="lsFert" rows="6">${esc(S.lists.fert.join('\n'))}</textarea>
+      <label style="margin-top:8px">مراحل النمو</label><textarea id="lsStage" rows="5">${esc(S.lists.stage.join('\n'))}</textarea>
+      <label style="margin-top:8px">أنواع الرش</label><textarea id="lsSpray" rows="5">${esc(S.lists.spray.join('\n'))}</textarea>
+      <button class="btn" style="margin-top:8px" data-act="savelists">حفظ القوائم</button></div>
+    <div class="card"><h3>الحساب</h3><p class="mut" dir="ltr" style="text-align:left;word-break:break-all">${esc(API)}</p>
+      <button class="btn warn" data-act="logout">تغيير الرابط / الكود</button></div>`;
+}
+const cropRow = (name, area, old) => `<div class="croprow" data-old="${esc(old)}"><input class="cn" value="${esc(name)}" placeholder="اسم المحصول"><input class="ca" type="number" inputmode="decimal" step="any" value="${esc(area)}" placeholder="فدان"><button class="btn warn sm" data-act="delcrop">حذف</button></div>`;
+const linesOf = id => [...new Set($('#' + id).value.split('\n').map(x => x.trim()).filter(Boolean))];
+
+/* ================= الأحداث ================= */
+const view = $('#view');
+view.addEventListener('input', e => { if (S.tab === 'program' && e.target.closest('#days')) markDirty(); });
+view.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'cropSel') { if (S.dirty && !confirm('فيه تعديلات متحفظتش. تكمل من غير حفظ؟')) { t.value = S.crop; return; } S.crop = t.value; render(); return; }
+  if (t.id === 'wsel') { setWeek(parseInt(t.value)); return; }
+  if (t.id === 'tMode') { S.tMode = t.value; render(); return; }
+  if (t.id === 'tCrop') { S.tCrop = t.value; render(); return; }
+  if (t.dataset && t.dataset.kind && t.value === '__new__') { onSelChange(t); markDirty(); }
+});
+view.addEventListener('click', async e => {
+  const st = e.target.closest('[data-st]'); if (st) { setStatus(st.dataset.st); return; }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, card = b.closest('details.day');
+  switch (act) {
+    case 'wprev': setWeek(S.week - 1); break;
+    case 'wnext': setWeek(S.week + 1); break;
+    case 'save': saveWeek(); break;
+    case 'copyweek': openCopy(); break;
+    case 'morefert': { const h = $('.fr.hid', card); if (h) h.classList.remove('hid'); else toast('وصلت للحد الأقصى 6'); break; }
+    case 'clearday': { if (!confirm('تمسح بيانات اليوم ده؟')) break; const open = card.open; card.outerHTML = dayCard(+card.dataset.i, blank(), open); markDirty(); break; }
+    case 'copyprev': {
+      const i = +card.dataset.i; let prev;
+      if (i > 0) prev = readDay($('#days .day[data-i="' + (i - 1) + '"]'));
+      else prev = S.program.get(S.crop + '|' + iso(addDays(weekStart(S.week), -1)));
+      if (!prev || isEmpty(prev)) { toast('اليوم السابق فاضي'); break; }
+      card.outerHTML = dayCard(i, prev, true); markDirty(); break;
+    }
+    case 'wa': { const t = waText(); if (navigator.share) { try { await navigator.share({ text: t }); } catch (x) {} } else { try { await navigator.clipboard.writeText(t); toast('اتنسخ — الصقه في الواتساب'); } catch (x) { prompt('انسخ النص:', t); } } break; }
+    case 'savestart': {
+      const val = $('#sStart').value; if (!val) break;
+      try { await api('saveSetting', { key: 'startDate', value: val }); S.settings.startDate = val; S.week = curWeek(); toast('اتحفظ'); } catch (x) { toast('فشل: ' + x.message); } break;
+    }
+    case 'addcrop': $('#cropRows').insertAdjacentHTML('beforeend', cropRow('', '', '')); break;
+    case 'delcrop': if (confirm('تمسح المحصول ده من القايمة؟ (بياناته هتفضل في الشيت)')) b.closest('.croprow').remove(); break;
+    case 'savecrops': {
+      const crops = $$('.croprow').map(r => ({ name: $('.cn', r).value.trim(), area: parseFloat($('.ca', r).value) || 0, old: r.dataset.old })).filter(c => c.name);
+      if (new Set(crops.map(c => c.name)).size !== crops.length) { toast('فيه اسمين متكررين'); break; }
+      try {
+        await api('saveCrops', { crops });
+        const ren = {}; crops.forEach(c => { if (c.old && c.old !== c.name) ren[c.old] = c.name; });
+        if (Object.keys(ren).length) { const m = new Map(); S.program.forEach(o => { if (ren[o.crop]) o.crop = ren[o.crop]; m.set(o.crop + '|' + o.date, o); }); S.program = m; if (ren[S.crop]) S.crop = ren[S.crop]; }
+        S.crops = crops.map(c => ({ name: c.name, area: c.area }));
+        if (!S.crops.find(c => c.name === S.crop)) S.crop = (S.crops[0] || {}).name || '';
+        toast('اتحفظت المحاصيل'); render();
+      } catch (x) { toast('فشل: ' + x.message); } break;
+    }
+    case 'savelists': {
+      S.lists = { fert: linesOf('lsFert'), stage: linesOf('lsStage'), spray: linesOf('lsSpray') };
+      try { await api('saveLists', S.lists); toast('اتحفظت القوائم'); } catch (x) { toast('فشل: ' + x.message); } break;
+    }
+    case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); API = ''; CODE = ''; showLogin(); } break;
+  }
+});
+
+boot();
+</script>
+</body>
+</html>
