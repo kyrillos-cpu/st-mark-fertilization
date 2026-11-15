@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>San Mark Fertilization &amp; Spraying</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2e7d32">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="San Mark">
 <style>
 :root{--g:#2e7d32;--g2:#e8f5e9;--bd:#cfd8cf;--tx:#1b2b1b;--mut:#6a766a;--bg:#f4f7f4;--warn:#b26a00;--bad:#b3261e}
 *{box-sizing:border-box}
@@ -75,10 +82,11 @@ table.wo td:first-child{white-space:nowrap}
 
 <div id="login" style="display:none">
   <div class="card">
-    <h3 dir="ltr" style="text-align:right">San Mark Fertilization &amp; Spraying</h3>
-    <p class="mut">أول مرة بس: الصق رابط الـ Web app والكود السري.</p>
-    <label>رابط Web app (Apps Script)</label>
-    <input id="lApi" dir="ltr" placeholder="https://script.google.com/macros/s/.../exec">
+    <div style="text-align:center"><img src="icon-192.png" width="96" height="96" alt="" style="border-radius:22px"></div>
+    <h3 dir="ltr" style="text-align:center">San Mark Fertilization &amp; Spraying</h3>
+    <p class="mut" id="lHint">أول مرة بس: اكتب الكود السري.</p>
+    <div id="lApiWrap"><label>رابط Web app (Apps Script)</label>
+    <input id="lApi" dir="ltr" placeholder="https://script.google.com/macros/s/.../exec"></div>
     <label style="margin-top:8px">الكود السري</label>
     <input id="lCode" dir="ltr" type="password">
     <p id="lErr" style="color:var(--bad)"></p>
@@ -88,7 +96,7 @@ table.wo td:first-child{white-space:nowrap}
 
 <div id="app" style="display:none">
   <header>
-    <h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1>
+    <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
     <button id="reload">تحديث</button>
   </header>
   <main id="view"></main>
@@ -99,7 +107,7 @@ table.wo td:first-child{white-space:nowrap}
 
 <script>
 // ممكن تحط رابط الـ Web app هنا بدل ما تكتبه في الشاشة الأولى
-const API_DEFAULT = '';
+const API_DEFAULT = 'https://script.google.com/macros/s/AKfycbyr_Uwx_mvJnRzBFF1WIN1nNZu8-tc28IzPaFIy6C7vSNJfCLSP9dxF9XhTuNNGdlVJWA/exec';
 
 /* ================= أدوات ================= */
 const $ = (s, r = document) => r.querySelector(s);
@@ -176,6 +184,7 @@ async function load(){
 function showLogin(msg){
   $('#app').style.display = 'none'; $('#login').style.display = 'block';
   $('#lApi').value = API || ''; $('#lCode').value = ''; $('#lErr').textContent = msg || '';
+  if (API_DEFAULT) $('#lApiWrap').style.display = 'none';
 }
 $('#lGo').onclick = async () => {
   API = $('#lApi').value.trim(); CODE = $('#lCode').value.trim();
@@ -557,10 +566,11 @@ view.addEventListener('click', async e => {
       S.lists = { fert: linesOf('lsFert'), stage: linesOf('lsStage'), spray: linesOf('lsSpray') };
       try { await api('saveLists', S.lists); toast('اتحفظت القوائم'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
-    case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); API = ''; CODE = ''; showLogin(); } break;
+    case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); API = API_DEFAULT; CODE = ''; showLogin(); } break;
   }
 });
 
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 boot();
 </script>
 </body>
