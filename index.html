@@ -20,7 +20,7 @@ header{background:var(--g);color:#fff;padding:10px 14px;position:sticky;top:0;z-
 header h1{font-size:17px;margin:0}
 header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;padding:7px 12px;font:inherit}
 nav{position:fixed;bottom:0;right:0;left:0;display:flex;background:#fff;border-top:1px solid var(--bd);z-index:20;padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;padding:13px 2px;border:0;background:none;font:inherit;font-size:14px;color:var(--mut);border-top:3px solid transparent}
+nav button{flex:1;padding:13px 2px;border:0;background:none;font:inherit;font-size:13px;color:var(--mut);border-top:3px solid transparent}
 nav button.on{color:var(--g);font-weight:700;border-top-color:var(--g)}
 main{padding:12px;max-width:1100px;margin:0 auto}
 select,input,textarea{font:inherit;padding:9px;border:1px solid var(--bd);border-radius:8px;width:100%;background:#fff;color:var(--tx)}
@@ -75,6 +75,28 @@ table.wo td:first-child{white-space:nowrap}
 #toast{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:#263238;color:#fff;padding:10px 18px;border-radius:10px;z-index:60;display:none;max-width:90%;text-align:center}
 #login{max-width:420px;margin:40px auto;padding:0 16px}
 .croprow{display:grid;grid-template-columns:1fr 90px auto;gap:6px;margin-bottom:6px}
+.hero{background:linear-gradient(135deg,#2e7d32,#558b2f);color:#fff;border-radius:14px;padding:14px;margin:10px 0}
+.hero h2{margin:0 0 4px;font-size:18px}
+.hero .st{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.hero .st span{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:13px}
+.hc{background:#fff;border:1px solid var(--bd);border-radius:14px;margin:12px 0;overflow:hidden}
+.hc>.hh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;background:var(--g2);border-bottom:1px solid var(--bd)}
+.hc>.hh b{font-size:16px;color:#1b5e20}
+.hc table{border-collapse:collapse;width:100%;min-width:680px;font-size:13.5px}
+.hc td.dy,.hc th:first-child{position:sticky;right:0;background:#fff;z-index:1;box-shadow:-1px 0 0 #e1e6e1}
+.hc th:first-child{background:#f6faf6}
+.hc tr.em td.dy{background:#fafbfa}.hc tr.td td.dy{background:#fffde7}
+.hc td:nth-child(2){min-width:80px}.hc td:nth-child(3){min-width:85px;white-space:nowrap}.hc td:nth-child(4){min-width:130px}.hc td:nth-child(5){min-width:150px}.hc td:nth-child(6){min-width:110px}
+.hc th{background:#f6faf6;color:var(--mut);font-weight:600;padding:7px 8px;text-align:right;border-bottom:1px solid #e1e6e1;white-space:nowrap}
+.hc td{padding:8px;border-bottom:1px solid #eef2ee;vertical-align:top;text-align:right}
+.hc tr:last-child td{border-bottom:0}
+.hc td.dy{white-space:nowrap;font-weight:700;color:#1b5e20}
+.hc td.dy small{display:block;font-weight:400;color:var(--mut)}
+.hc tr.em td{color:#b0b8b0;background:#fafbfa}
+.hc tr.td td{background:#fffde7}
+.tg{display:inline-block;border-radius:8px;padding:2px 8px;margin:1px 0;font-size:12.5px;line-height:1.5}
+.tg.ir{background:#e3f2fd;color:#0d47a1}.tg.fe{background:#e8f5e9;color:#1b5e20}.tg.sp{background:#fff3e0;color:#a24a00}.tg.me{background:#f3e5f5;color:#6a1b9a}
+.hnone{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px dashed var(--bd);border-radius:12px;padding:10px 12px;margin:8px 0;color:var(--mut)}
 .userrow{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px}
 .itemrow{display:grid;grid-template-columns:1fr 1fr 80px 80px auto;gap:6px;margin-bottom:6px}
 .subtabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px}
@@ -149,7 +171,7 @@ let API = store.get('api') || API_DEFAULT, CODE = store.get('code') || '', PHONE
 const isStore = () => !CODE && !!PHONE;
 const cred = () => CODE ? 'code=' + encodeURIComponent(CODE) : 'phone=' + encodeURIComponent(PHONE);
 const S = { crops: [], lists: { fert: [], stage: [], spray: [] }, settings: {}, program: new Map(), orders: {},
-            tab: 'program', crop: '', week: 1, dirty: false, tCrop: '*', tMode: 'feddan',
+            tab: 'home', crop: '', week: 1, dirty: false, tCrop: '*', tMode: 'feddan',
             store: { items: [], receipts: [], issues: [], requests: [] }, users: [], sub: 'req' };
 
 const startDate = () => parse(S.settings.startDate || '2026-11-01');
@@ -260,7 +282,7 @@ function startApp(){
   $('#login').style.display = 'none'; $('#app').style.display = 'block';
   S.week = curWeek();
   $('#hout').style.display = isStore() ? '' : 'none';
-  if (!isStore() && S.tab === 'store' && !S.keepStore) S.tab = 'program';
+  if (!isStore() && S.tab === 'store' && !S.keepStore) S.tab = 'home';
   renderNav(); render();
 }
 $('#hout').onclick = () => { if (confirm('تخرج؟')) { store.del('phone'); PHONE = ''; showLogin(); } };
@@ -270,7 +292,7 @@ $('#reload').onclick = async () => {
 };
 
 /* ================= التنقل ================= */
-const TABS = [['program', 'البرنامج'], ['totals', 'الإجماليات'], ['order', 'أمر التشغيل'], ['store', 'المخزن'], ['settings', 'الإعدادات']];
+const TABS = [['home', 'الرئيسية'], ['program', 'البرنامج'], ['totals', 'الإجماليات'], ['order', 'أمر التشغيل'], ['store', 'المخزن'], ['settings', 'الإعدادات']];
 function renderNav(){
   $('#nav').style.display = isStore() ? 'none' : 'flex';
   $('#nav').innerHTML = TABS.map(([k, n]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${n}</button>`).join('');
@@ -283,6 +305,7 @@ $('#nav').addEventListener('click', e => {
 function render(keep){
   const v = $('#view'), y = window.scrollY;
   if (S.tab === 'store') viewStore(v);
+  else if (S.tab === 'home') viewHome(v);
   else if (S.tab === 'program') viewProgram(v);
   else if (S.tab === 'totals') viewTotals(v);
   else if (S.tab === 'order') viewOrder(v);
@@ -301,6 +324,40 @@ function setWeek(w){
   w = Math.min(52, Math.max(1, w));
   if (S.dirty && !confirm('فيه تعديلات متحفظتش. تكمل من غير حفظ؟')) { render(); return; }
   S.dirty = false; S.week = w; render();
+}
+
+/* ================= الرئيسية ================= */
+function viewHome(v){
+  const w = S.week, ws = weekStart(w), od = S.orders[w] || {}, todayIso = iso(new Date());
+  const cards = [], none = [];
+  let nFert = 0, nSpray = 0;
+  S.crops.forEach(c => {
+    const rows = Array.from({ length: 7 }, (_, i) => { const d = addDays(ws, i); return { d, o: S.program.get(c.name + '|' + iso(d)) }; });
+    const has = rows.filter(r => r.o && !isEmpty(r.o));
+    if (!has.length) { none.push(c); return; }
+    const irr = has.filter(r => r.o.irr).length, fe = new Set(), sp = new Set();
+    has.forEach(r => { r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fe.add(x.n); }); if (r.o.spray) sp.add(r.o.spray); });
+    nFert += fe.size; nSpray += sp.size;
+    const body = rows.map(r => {
+      const o = r.o, d = r.d, e = !o || isEmpty(o), t = iso(d) === todayIso;
+      const head = `<td class="dy">${dayName(d)}<small>${dm(d)}${t ? ' · النهارده' : ''}</small></td>`;
+      if (e) return `<tr class="em ${t ? 'td' : ''}">${head}<td colspan="5">—</td></tr>`;
+      const irrT = o.irr ? `<span class="tg ir">${esc(o.irr)} د × ${esc(o.freq || 1)}</span>` : '';
+      const feT = o.f.filter(x => x.n && parseFloat(x.q)).map(x => `<div><span class="tg fe">${esc(x.n)} <b>${fmt(x.q)}</b></span></div>`).join('');
+      const spT = o.spray ? `<span class="tg sp">${esc(sprayTxt(o))}</span>` : '';
+      const meT = o.mech ? `<span class="tg me">${esc(o.mech)}</span>` : '';
+      return `<tr class="${t ? 'td' : ''}">${head}<td>${esc(o.stage)}</td><td>${irrT}</td><td>${feT}</td><td>${spT}</td><td>${meT}${o.notes ? '<div class="mut">' + esc(o.notes) + '</div>' : ''}</td></tr>`;
+    }).join('');
+    cards.push(`<div class="hc"><div class="hh"><div><b>${esc(c.name)}</b> <span class="mut">${c.area ? '— ' + c.area + ' فدان' : ''}</span></div>
+      <button class="btn sec sm" data-act="editcrop" data-crop="${esc(c.name)}">تعديل</button></div>
+      <div class="tw" style="border:0;border-radius:0;max-height:none"><table><tr><th>اليوم</th><th>المرحلة</th><th>الري</th><th>التسميد (كجم/فدان)</th><th>الرش</th><th>ميكانيكي / ملاحظات</th></tr>${body}</table></div></div>`);
+  });
+  v.innerHTML = `${weekNav()}
+    <div class="hero"><h2>برنامج أسبوع ${w}</h2>
+      <div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
+      <div class="st"><span>${cards.length} محصول عليه برنامج</span><span>${nFert} صنف تسميد</span><span>${nSpray} صنف رش</span><span>أمر التشغيل: ${statusLabel(od.status)}</span></div></div>
+    ${cards.join('') || '<div class="card">مفيش برنامج مسجل للأسبوع ده. دوس "تعديل" على أي محصول أو افتح تاب البرنامج.</div>'}
+    ${none.length ? `<div class="mut" style="margin:10px 0 4px">محاصيل من غير برنامج الأسبوع ده:</div>` + none.map(c => `<div class="hnone"><span>${esc(c.name)}</span><button class="btn sec sm" data-act="editcrop" data-crop="${esc(c.name)}">ابدأ البرنامج</button></div>`).join('') : ''}`;
 }
 
 /* ================= شاشة البرنامج ================= */
@@ -738,6 +795,7 @@ view.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act, card = b.closest('details.day');
   switch (act) {
+    case 'editcrop': S.crop = b.dataset.crop; S.tab = 'program'; renderNav(); render(); break;
     case 'wprev': setWeek(S.week - 1); break;
     case 'wnext': setWeek(S.week + 1); break;
     case 'save': saveWeek(); break;
