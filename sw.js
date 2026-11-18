@@ -1,5 +1,5 @@
 // Service worker بسيط: بيحفظ شكل الأب، والبيانات دايما من النت (من الشيت)
-const CACHE = 'sanmark-v1';
+const CACHE = 'sanmark-v2';
 const SHELL = ['./', 'index.html', 'icon-192.png', 'icon-512.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {

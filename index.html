@@ -75,6 +75,21 @@ table.wo td:first-child{white-space:nowrap}
 #toast{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:#263238;color:#fff;padding:10px 18px;border-radius:10px;z-index:60;display:none;max-width:90%;text-align:center}
 #login{max-width:420px;margin:40px auto;padding:0 16px}
 .croprow{display:grid;grid-template-columns:1fr 90px auto;gap:6px;margin-bottom:6px}
+.userrow{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px}
+.itemrow{display:grid;grid-template-columns:1fr 1fr 80px 80px auto;gap:6px;margin-bottom:6px}
+.subtabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px}
+.subtabs button{flex:0 0 auto;border:1px solid var(--bd);background:#fff;border-radius:20px;padding:8px 14px;font:inherit;font-size:14px;color:var(--mut)}
+.subtabs button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.reql{display:grid;gap:6px;border-top:1px solid #e8ece8;padding:10px 0}
+.reql:first-of-type{border-top:0}
+.reql .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.reql .go{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center}
+.lowc{color:var(--bad);font-weight:700}
+.okc{color:var(--g);font-weight:700}
+.seg{display:flex;gap:6px;margin:8px 0}
+.seg button{flex:1;border:1px solid var(--bd);background:#fff;border-radius:9px;padding:9px;font:inherit;color:var(--mut)}
+.seg button.on{background:var(--g);color:#fff;border-color:var(--g)}
+.row3s{display:grid;grid-template-columns:1fr 80px 80px;gap:6px}
 @media print{header,nav,.noprint,.savebar,#busy,#toast{display:none!important}body{background:#fff;padding:0}.card{border:0;padding:0}.tw{max-height:none;border:0}table.t th{position:static}}
 </style>
 </head>
@@ -84,11 +99,14 @@ table.wo td:first-child{white-space:nowrap}
   <div class="card">
     <div style="text-align:center"><img src="icon-192.png" width="96" height="96" alt="" style="border-radius:22px"></div>
     <h3 dir="ltr" style="text-align:center">San Mark Fertilization &amp; Spraying</h3>
+    <div class="seg"><button id="mAdm" class="on">مدير (كود سري)</button><button id="mSto">مسئول المخزن (موبايل)</button></div>
     <p class="mut" id="lHint">أول مرة بس: اكتب الكود السري.</p>
     <div id="lApiWrap"><label>رابط Web app (Apps Script)</label>
     <input id="lApi" dir="ltr" placeholder="https://script.google.com/macros/s/.../exec"></div>
-    <label style="margin-top:8px">الكود السري</label>
-    <input id="lCode" dir="ltr" type="password">
+    <div id="lCodeWrap"><label style="margin-top:8px">الكود السري</label>
+    <input id="lCode" dir="ltr" type="password"></div>
+    <div id="lPhoneWrap" style="display:none"><label style="margin-top:8px">رقم الموبايل المسجّل</label>
+    <input id="lPhone" dir="ltr" type="tel" inputmode="tel" placeholder="01xxxxxxxxx"></div>
     <p id="lErr" style="color:var(--bad)"></p>
     <button class="btn" id="lGo" style="width:100%">دخول</button>
   </div>
@@ -97,7 +115,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <button id="reload">تحديث</button>
+    <span><button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <main id="view"></main>
   <nav id="nav"></nav>
@@ -127,9 +145,12 @@ const store = {
   del(k){ try { localStorage.removeItem(k); } catch (e) {} }
 };
 
-let API = store.get('api') || API_DEFAULT, CODE = store.get('code') || '';
+let API = store.get('api') || API_DEFAULT, CODE = store.get('code') || '', PHONE = store.get('phone') || '';
+const isStore = () => !CODE && !!PHONE;
+const cred = () => CODE ? 'code=' + encodeURIComponent(CODE) : 'phone=' + encodeURIComponent(PHONE);
 const S = { crops: [], lists: { fert: [], stage: [], spray: [] }, settings: {}, program: new Map(), orders: {},
-            tab: 'program', crop: '', week: 1, dirty: false, tCrop: '*', tMode: 'feddan' };
+            tab: 'program', crop: '', week: 1, dirty: false, tCrop: '*', tMode: 'feddan',
+            store: { items: [], receipts: [], issues: [], requests: [] }, users: [], sub: 'req' };
 
 const startDate = () => parse(S.settings.startDate || '2026-11-01');
 const weekStart = w => addDays(startDate(), (w - 1) * 7);
@@ -145,8 +166,8 @@ async function api(action, payload){
   busy(true);
   try {
     let r;
-    if (!payload) r = await fetch(API + '?action=' + action + '&code=' + encodeURIComponent(CODE));
-    else r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, code: CODE, ...payload }) });
+    if (!payload) r = await fetch(API + '?action=' + action + '&' + cred());
+    else r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, ...(CODE ? { code: CODE } : { phone: PHONE }), ...payload }) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'حصل خطأ');
     return j;
@@ -154,25 +175,52 @@ async function api(action, payload){
 }
 
 /* ================= البيانات ================= */
-const blank = () => ({ stage: '', irr: '', freq: '', f: Array.from({ length: 6 }, () => ({ n: '', q: '' })), spray: '', sq: '', mech: '', notes: '' });
-const isEmpty = o => !(o.stage || String(o.irr).trim() || String(o.freq).trim() || o.f.some(x => x.n || String(x.q).trim()) || o.spray || String(o.sq).trim() || o.mech || o.notes);
+const SU = ['مل', 'لتر', 'جم', 'كجم'];
+const blank = () => ({ stage: '', irr: '', freq: '', f: Array.from({ length: 6 }, () => ({ n: '', q: '' })), spray: '', sq: '', su: 'مل', tk: '', mech: '', notes: '' });
+const isEmpty = o => !(o.stage || String(o.irr).trim() || String(o.freq).trim() || o.f.some(x => x.n || String(x.q).trim()) || o.spray || String(o.sq).trim() || String(o.tk).trim() || o.mech || o.notes);
+const D2 = t => String(t).replace(/[٠-٩]/g, c => c.charCodeAt(0) - 1632).replace('٫', '.').replace('،', '.');
+function parseSq(t){
+  const m = D2(String(t).trim()).match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+  if (!m) return null;
+  const q = parseFloat(m[1].replace(',', '.')), u = m[2].trim();
+  let su = 'مل';
+  if (/^(لتر|ل|لتر\/.*)$/.test(u)) su = 'لتر'; else if (/^(كجم|كيلو|كج)/.test(u)) su = 'كجم'; else if (/^(جم|جرام|غم|جر)/.test(u)) su = 'جم'; else if (/^(مل|سم|cc)/i.test(u)) su = 'مل';
+  return { q, su };
+}
 
 function rowToObj(r){
   const o = blank();
   o.crop = String(r[0]); o.date = String(r[1]); o.stage = r[2]; o.irr = r[3]; o.freq = r[4];
   for (let i = 0; i < 6; i++) o.f[i] = { n: r[5 + i * 2] || '', q: r[6 + i * 2] };
-  o.spray = r[17]; o.sq = r[18]; o.mech = r[19]; o.notes = r[20];
+  o.spray = r[17] || ''; o.sq = r[18]; o.mech = r[19]; o.notes = r[20];
+  o.su = SU.includes(r[21]) ? r[21] : 'مل'; o.tk = (r[22] === undefined || r[22] === null) ? '' : r[22];
+  if (typeof o.sq === 'string' && o.sq.trim() !== '' && isNaN(Number(o.sq))) {
+    const p = parseSq(o.sq);
+    if (p) { o.sq = p.q; if (!SU.includes(r[21])) o.su = p.su; } else { o.notes = (o.notes ? o.notes + ' | ' : '') + 'كمية الرش: ' + o.sq; o.sq = ''; }
+  }
+  if (o.spray && String(o.sq).trim() !== '' && String(o.tk).trim() === '') o.tk = 1;
   return o;
 }
 function objToRow(crop, date, o){
   const r = [crop, date, o.stage, num(o.irr), num(o.freq)];
   o.f.forEach(x => r.push(x.n, num(x.q)));
-  r.push(o.spray, o.sq, o.mech, o.notes);
+  r.push(o.spray, num(o.sq), o.mech, o.notes, o.su || 'مل', num(o.tk));
   return r;
 }
+// إجمالي الرش للصنف: كمية الفلاية × عدد الفلايات
+function sprayTot(o){ const q = parseFloat(o.sq); if (!o.spray || !q) return 0; return q * (parseFloat(o.tk) || 1); }
+function sprayTxt(o){
+  if (!o.spray) return '';
+  const q = parseFloat(o.sq), k = parseFloat(o.tk);
+  if (!q) return o.spray;
+  return o.spray + ' ' + q + ' ' + o.su + '/فلاية' + (k ? ' × ' + k + ' فلاية = ' + fmt3(q * k) + ' ' + o.su : '');
+}
+const fmt3 = n => String(Math.round(Number(n) * 1000) / 1000);
 
 async function load(){
+  if (isStore()) { const j = await api('getStore'); S.store = j.store; S.who = j.name; S.tab = 'store'; return; }
   const j = await api('getAll');
+  S.store = j.store || S.store; S.users = j.users || [];
   S.crops = j.crops; S.lists = j.lists; S.settings = j.settings; S.orders = j.orders;
   S.program = new Map();
   j.program.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
@@ -181,35 +229,50 @@ async function load(){
 }
 
 /* ================= الدخول ================= */
+let LMODE = 'admin';
+function setLMode(m){
+  LMODE = m;
+  $('#mAdm').classList.toggle('on', m === 'admin'); $('#mSto').classList.toggle('on', m === 'store');
+  $('#lCodeWrap').style.display = m === 'admin' ? '' : 'none'; $('#lPhoneWrap').style.display = m === 'store' ? '' : 'none';
+  $('#lHint').textContent = m === 'admin' ? 'أول مرة بس: اكتب الكود السري.' : 'اكتب رقم موبايلك المسجّل عند المدير.';
+}
+$('#mAdm').onclick = () => setLMode('admin'); $('#mSto').onclick = () => setLMode('store');
 function showLogin(msg){
   $('#app').style.display = 'none'; $('#login').style.display = 'block';
-  $('#lApi').value = API || ''; $('#lCode').value = ''; $('#lErr').textContent = msg || '';
+  $('#lApi').value = API || ''; $('#lCode').value = ''; $('#lPhone').value = PHONE || ''; $('#lErr').textContent = msg || '';
   if (API_DEFAULT) $('#lApiWrap').style.display = 'none';
+  setLMode(PHONE && !CODE ? 'store' : 'admin');
 }
 $('#lGo').onclick = async () => {
-  API = $('#lApi').value.trim(); CODE = $('#lCode').value.trim();
-  if (!API || !CODE) { $('#lErr').textContent = 'اكتب الرابط والكود'; return; }
-  try { await load(); store.set('api', API); store.set('code', CODE); startApp(); }
-  catch (e) { $('#lErr').textContent = 'مقدرتش أدخل: ' + e.message; }
+  API = $('#lApi').value.trim();
+  const oc = CODE, op = PHONE;
+  if (LMODE === 'admin') { CODE = $('#lCode').value.trim(); PHONE = ''; if (!API || !CODE) { CODE = oc; PHONE = op; $('#lErr').textContent = 'اكتب الرابط والكود'; return; } }
+  else { PHONE = $('#lPhone').value.trim(); CODE = ''; if (!API || !PHONE) { CODE = oc; PHONE = op; $('#lErr').textContent = 'اكتب رقم الموبايل'; return; } }
+  try { await load(); store.set('api', API); if (CODE) { store.set('code', CODE); store.del('phone'); } else { store.set('phone', PHONE); store.del('code'); } startApp(); }
+  catch (e) { CODE = oc; PHONE = op; $('#lErr').textContent = 'مقدرتش أدخل: ' + e.message; }
 };
 
 async function boot(){
-  if (!API || !CODE) return showLogin();
+  if (!API || (!CODE && !PHONE)) return showLogin();
   try { await load(); startApp(); } catch (e) { showLogin(e.message); }
 }
 function startApp(){
   $('#login').style.display = 'none'; $('#app').style.display = 'block';
   S.week = curWeek();
+  $('#hout').style.display = isStore() ? '' : 'none';
+  if (!isStore() && S.tab === 'store' && !S.keepStore) S.tab = 'program';
   renderNav(); render();
 }
+$('#hout').onclick = () => { if (confirm('تخرج؟')) { store.del('phone'); PHONE = ''; showLogin(); } };
 $('#reload').onclick = async () => {
   if (S.dirty && !confirm('فيه تعديلات متحفظتش. تحديث هيمسحها؟')) return;
   try { await load(); S.dirty = false; render(); toast('اتحدّث'); } catch (e) { toast(e.message); }
 };
 
 /* ================= التنقل ================= */
-const TABS = [['program', 'البرنامج'], ['totals', 'الإجماليات'], ['order', 'أمر التشغيل'], ['settings', 'الإعدادات']];
+const TABS = [['program', 'البرنامج'], ['totals', 'الإجماليات'], ['order', 'أمر التشغيل'], ['store', 'المخزن'], ['settings', 'الإعدادات']];
 function renderNav(){
+  $('#nav').style.display = isStore() ? 'none' : 'flex';
   $('#nav').innerHTML = TABS.map(([k, n]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${n}</button>`).join('');
 }
 $('#nav').addEventListener('click', e => {
@@ -217,13 +280,14 @@ $('#nav').addEventListener('click', e => {
   if (S.dirty && S.tab === 'program' && !confirm('فيه تعديلات متحفظتش. تكمل من غير حفظ؟')) return;
   S.dirty = false; S.tab = b.dataset.tab; renderNav(); render();
 });
-function render(){
-  const v = $('#view');
-  if (S.tab === 'program') viewProgram(v);
+function render(keep){
+  const v = $('#view'), y = window.scrollY;
+  if (S.tab === 'store') viewStore(v);
+  else if (S.tab === 'program') viewProgram(v);
   else if (S.tab === 'totals') viewTotals(v);
   else if (S.tab === 'order') viewOrder(v);
   else viewSettings(v);
-  window.scrollTo(0, 0);
+  window.scrollTo(0, keep ? y : 0);
 }
 
 function weekNav(){
@@ -271,8 +335,11 @@ function dayCard(i, o, open){
       <div class="sub">التسميد (كمية لكل فدان)</div>
       ${fr}
       <button class="link" data-act="morefert">+ سماد آخر (لحد 6)</button>
-      <div class="sub">الرش (لكل ${tank()} لتر)</div>
-      <div class="fr">${sel('spray', o.spray, 'spray')}<input data-k="sq" placeholder="الكمية" value="${esc(o.sq)}"></div>
+      <div class="sub">الرش (الفلاية ${tank()} لتر)</div>
+      <div>${sel('spray', o.spray, 'spray')}</div>
+      <div class="row3"><div><label>الكمية / فلاية</label><input data-k="sq" type="number" inputmode="decimal" step="any" value="${esc(o.sq)}"></div>
+        <div><label>الوحدة</label><select data-k="su">${SU.map(u => `<option ${u === o.su ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+        <div><label>عدد الفلايات</label><input data-k="tk" type="number" inputmode="decimal" step="any" value="${esc(o.tk)}"></div></div>
       <div><label>المعاملات الميكانيكية</label><input data-k="mech" value="${esc(o.mech)}"></div>
       <div><label>ملاحظات</label><textarea data-k="notes">${esc(o.notes)}</textarea></div>
       <div class="row2"><button class="btn sec sm" data-act="copyprev">نسخ من اليوم السابق</button><button class="btn warn sm" data-act="clearday">مسح اليوم</button></div>
@@ -291,7 +358,7 @@ function viewProgram(v){
 }
 function readDay(card){
   const g = k => { const e = card.querySelector('[data-k="' + k + '"]'); return e ? e.value : ''; };
-  const o = { stage: g('stage'), irr: g('irr'), freq: g('freq'), spray: g('spray'), sq: g('sq'), mech: g('mech'), notes: g('notes'), f: [] };
+  const o = { stage: g('stage'), irr: g('irr'), freq: g('freq'), spray: g('spray'), sq: g('sq'), su: g('su') || 'مل', tk: g('tk'), mech: g('mech'), notes: g('notes'), f: [] };
   $$('.fr', card).forEach(r => { const n = r.querySelector('[data-k="fn"]'); if (n) o.f.push({ n: n.value, q: r.querySelector('[data-k="fq"]').value }); });
   return o;
 }
@@ -302,6 +369,7 @@ async function saveWeek(){
   for (const c of cards) {
     const o = readDay(c); dates.push(c.dataset.iso);
     if (o.f.some(x => String(x.q).trim() !== '' && !x.n)) { c.open = true; toast('اختار اسم السماد للكمية المكتوبة'); return; }
+    if (o.spray && String(o.sq).trim() !== '' && String(o.tk).trim() === '') { c.open = true; toast('اكتب عدد الفلايات للرش'); return; }
     if (!isEmpty(o)) rows.push(objToRow(S.crop, c.dataset.iso, o));
   }
   try {
@@ -442,9 +510,13 @@ function viewOrder(v){
     ${s.rows.filter(r => r.o && !isEmpty(r.o)).map(r => { const o = r.o; return `<tr><td>${dayName(r.d)}<br>${dm(r.d)}</td><td>${esc(o.stage)}</td>
       <td>${o.irr ? esc(o.irr) + ' د × ' + esc(o.freq || 1) : ''}</td>
       <td>${o.f.filter(x => x.n && parseFloat(x.q)).map(x => `${esc(x.n)}: <b>${fmt(x.q * s.c.area)} كجم</b> <span class="mut">(${esc(x.q)}/فدان)</span>`).join('<br>')}</td>
-      <td>${esc(o.spray)}${o.sq ? '<br>' + esc(o.sq) + ' / ' + tank() + ' لتر' : ''}</td><td>${esc(o.mech)}</td><td>${esc(o.notes)}</td></tr>`; }).join('')}
+      <td>${esc(sprayTxt(o))}</td><td>${esc(o.mech)}</td><td>${esc(o.notes)}</td></tr>`; }).join('')}
   </table></div></div>`).join('');
 
+  const stot = new Map();
+  secs.forEach(s => s.rows.forEach(r => { if (!r.o) return; const t = sprayTot(r.o); if (!t) return; const k = r.o.spray + '|' + r.o.su; stot.set(k, (stot.get(k) || 0) + t); }));
+  const sprayTotHtml = stot.size ? `<div class="card"><h3>إجمالي المبيدات المطلوبة للأسبوع</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th class="ann">الإجمالي</th></tr>
+    ${[...stot.entries()].map(([k, x]) => { const [n, u] = k.split('|'); return `<tr><td>${esc(n)}</td><td class="ann">${fmt3(x)} ${u}</td></tr>`; }).join('')}</table></div></div>` : '';
   const totHtml = tot.size ? `<div class="card"><h3>إجمالي الأسمدة المطلوبة للأسبوع (كجم)</h3><div class="tw"><table class="t"><tr><th>السماد</th><th class="ann">الإجمالي</th><th>التفصيل بالمحصول</th></tr>
     ${[...tot.entries()].map(([n, t]) => `<tr><td>${esc(n)}</td><td class="ann">${fmt(t.total)}</td><td style="text-align:right;white-space:normal">${Object.entries(t.by).map(([c, x]) => esc(c) + ': ' + fmt(x)).join(' · ')}</td></tr>`).join('')}</table></div></div>` : '';
 
@@ -452,14 +524,14 @@ function viewOrder(v){
     <div class="card"><h3>أمر تشغيل أسبوعي — أسبوع ${w}</h3>
       <div class="mut">من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
       <div style="margin-top:6px">الحالة: <span class="chip ${statusCls(od.status)}">${statusLabel(od.status)}</span></div></div>
-    ${secs.length ? secHtml + totHtml : '<div class="card">مفيش برنامج مسجل للأسبوع ده. املاه من شاشة البرنامج.</div>'}
+    ${secs.length ? secHtml + totHtml + sprayTotHtml : '<div class="card">مفيش برنامج مسجل للأسبوع ده. املاه من شاشة البرنامج.</div>'}
     <div class="card noprint"><h3>الاعتماد</h3>
       <div class="row2"><div><label>مهندس التنفيذ</label><input id="oEng" value="${esc(od.engineer || '')}"></div><div><label>مدير المزرعة</label><input id="oMgr" value="${esc(od.manager || '')}"></div></div>
       <div style="margin-top:8px"><label>ملاحظة</label><input id="oNote" value="${esc(od.note || '')}"></div>
       <div class="row2" style="margin-top:10px">
         ${(!od.status || od.status === 'draft' || od.status === 'returned') ? '<button class="btn" data-st="sent">إرسال للمدير</button>' : ''}
         ${od.status === 'sent' ? '<button class="btn" data-st="approved">اعتماد</button><button class="btn warn" data-st="returned">إرجاع للمهندس</button>' : ''}
-        ${od.status === 'approved' ? '<button class="btn sec" data-st="draft">إلغاء الاعتماد</button>' : ''}
+        ${od.status === 'approved' ? '<button class="btn" data-st="approved" data-lines="1">تحديث طلبات المخزن من البرنامج</button><button class="btn sec" data-st="draft">إلغاء الاعتماد</button>' : ''}
         <button class="btn sec" data-st="${od.status || 'draft'}">حفظ الأسماء بس</button>
       </div></div>
     <div class="row2 noprint"><button class="btn sec" data-act="wa">مشاركة / نسخ للواتساب</button><button class="btn sec" onclick="window.print()">طباعة</button></div>
@@ -478,7 +550,7 @@ function waText(){
       if (o.irr) p.push(`ري ${o.irr} د × ${o.freq || 1}`);
       const fs = o.f.filter(x => x.n && parseFloat(x.q));
       if (fs.length) p.push('تسميد: ' + fs.map(x => `${x.n} ${fmt(x.q * s.c.area)} كجم`).join('، '));
-      if (o.spray) p.push('رش: ' + o.spray + (o.sq ? ' ' + o.sq : ''));
+      if (o.spray) p.push('رش: ' + sprayTxt(o));
       if (o.mech) p.push('ميكانيكي: ' + o.mech);
       if (o.notes) p.push('ملاحظات: ' + o.notes);
       t += `${dayName(r.d)} ${dm(r.d)}: ${p.join(' | ')}\n`;
@@ -486,10 +558,142 @@ function waText(){
   });
   return t;
 }
-async function setStatus(st){
+// ===== طلبات الصرف اللي بتتولد من أمر التشغيل =====
+const FAM = { 'مل': ['لتر', 1000], 'لتر': ['لتر', 1], 'جم': ['كجم', 1000], 'كجم': ['كجم', 1] };
+const itemOf = n => S.store.items.find(i => i.name === n);
+function buildLines(w){
+  const m = new Map(), put = (crop, item, unit, qty) => { const k = crop + '|' + item; const a = m.get(k) || { crop, item, unit, qty: 0 }; a.qty += qty; m.set(k, a); };
+  sections(w).forEach(sc => sc.rows.forEach(r => {
+    const o = r.o; if (!o) return;
+    o.f.forEach(x => { const q = parseFloat(x.q); if (!x.n || !q) return; const it = itemOf(x.n); put(sc.c.name, x.n, it ? it.unit : 'كجم', q * sc.c.area); });
+    const t = sprayTot(o);
+    if (t) { const [bu, dv] = FAM[o.su] || ['لتر', 1000]; put(sc.c.name, o.spray, bu, t / dv); }
+  }));
+  return [...m.values()].map(l => ({ ...l, qty: Math.round(l.qty * 1000) / 1000 })).filter(l => l.qty > 0);
+}
+async function setStatus(st, withLines){
+  const prev = (S.orders[S.week] || {}).status;
   const rec = { week: S.week, status: st, engineer: $('#oEng').value.trim(), manager: $('#oMgr').value.trim(), note: $('#oNote').value.trim() };
-  try { await api('saveOrder', rec); S.orders[S.week] = { status: st, engineer: rec.engineer, manager: rec.manager, note: rec.note, updated: new Date().toISOString() }; toast('اتحفظ'); render(); }
+  if (st === 'approved' && (prev !== 'approved' || withLines)) rec.lines = buildLines(S.week);
+  try {
+    const j = await api('saveOrder', rec);
+    if (j.store) S.store = j.store;
+    S.orders[S.week] = { status: st, engineer: rec.engineer, manager: rec.manager, note: rec.note, updated: new Date().toISOString() };
+    toast(rec.lines ? 'اتحفظ — اتبعتت ' + rec.lines.length + ' طلب صرف للمخزن' : 'اتحفظ'); render();
+  } catch (e) { toast('فشل: ' + e.message); }
+}
+
+/* ================= المخزن ================= */
+const SUBS = [['req', 'طلبات الصرف'], ['bal', 'الرصيد'], ['in', 'وارد'], ['out', 'صرف يدوي'], ['items', 'الأصناف']];
+function balances(){
+  const m = new Map();
+  S.store.items.forEach(i => m.set(i.name, { name: i.name, unit: i.unit, type: i.type, opening: i.opening, inn: 0, out: 0, need: 0 }));
+  const get = n => m.get(n);
+  S.store.receipts.forEach(r => { const b = get(r.item); if (b) b.inn += r.qty; });
+  S.store.issues.forEach(r => { const b = get(r.item); if (b) b.out += r.qty; });
+  S.store.requests.forEach(r => { if (r.status !== 'done') { const b = get(r.item); if (b) b.need += r.need; } });
+  m.forEach(b => { b.bal = b.opening + b.inn - b.out; });
+  return m;
+}
+const itemOpts = (sel) => `<option value="">— اختر الصنف —</option>` + S.store.items.map(i => `<option value="${esc(i.name)}" ${i.name === sel ? 'selected' : ''}>${esc(i.name)} (${i.unit})</option>`).join('');
+const unitOf = n => (itemOf(n) || {}).unit || '';
+
+function viewStore(v){
+  const keeper = isStore();
+  const tabs = `<div class="subtabs">${SUBS.map(([k, n]) => `<button data-act="sub" data-sub="${k}" class="${S.sub === k ? 'on' : ''}">${n}${k === 'req' ? ' (' + S.store.requests.filter(r => r.status !== 'done').length + ')' : ''}</button>`).join('')}</div>`;
+  const hello = keeper ? `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— مسئول المخزن</span></div>` : '';
+  let body = '';
+  const B = balances();
+  if (S.sub === 'req') {
+    const weeks = [...new Set(S.store.requests.map(r => r.week))].sort((a, b) => b - a);
+    body = weeks.length ? weeks.map(w => {
+      const L = S.store.requests.filter(r => r.week === w), open = L.filter(r => r.status !== 'done').length, ws = weekStart(w);
+      return `<details class="card" ${open ? 'open' : ''}><summary style="cursor:pointer"><b>أسبوع ${w}</b> <span class="mut">(${dm(ws)} – ${dm(addDays(ws, 6))})</span> <span class="chip ${open ? 's1' : 's2'}">${open ? open + ' مفتوح' : 'خلص'}</span></summary>
+        ${L.map(r => {
+          const b = B.get(r.item), done = r.status === 'done';
+          const stock = b ? `الرصيد: <span class="${b.bal < r.need && !done ? 'lowc' : ''}">${fmt3(b.bal)} ${b.unit}</span>` : '<span class="lowc">الصنف مش متسجل في الأصناف</span>';
+          return done
+            ? `<div class="reql"><div class="top"><b>${esc(r.item)}</b><span>${esc(r.crop)}</span></div><div class="mut">المطلوب ${fmt3(r.need)} ${esc(r.unit)} — اتصرف <b class="okc">${fmt3(r.issued)} ${esc(r.unit)}</b> ${esc(r.issuedAt)} ${r.by ? '(' + esc(r.by) + ')' : ''}</div><button class="link" data-act="unissue" data-id="${esc(r.id)}">تراجع عن الصرف</button></div>`
+            : `<div class="reql"><div class="top"><b>${esc(r.item)}</b><span>${esc(r.crop)}</span></div><div class="mut">المطلوب: <b>${fmt3(r.need)} ${esc(r.unit)}</b> — ${stock}</div>
+              <div class="go"><input type="number" inputmode="decimal" step="any" class="iq" value="${r.need}"><input class="in" placeholder="ملاحظة"><button class="btn sm" data-act="issue" data-id="${esc(r.id)}">صرف</button></div></div>`;
+        }).join('')}</details>`;
+    }).join('') : '<div class="card">مفيش طلبات صرف. بتظهر هنا أوتوماتيك لما المدير يعتمد أمر التشغيل الأسبوعي.</div>';
+  } else if (S.sub === 'bal') {
+    const rows = [...B.values()];
+    body = rows.length ? `<div class="card"><h3>رصيد المخزن (أعداد فقط)</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th>الوحدة</th><th>افتتاحي</th><th>وارد</th><th>منصرف</th><th class="ann">الرصيد</th><th>مطلوب (طلبات مفتوحة)</th></tr>
+      ${rows.map(b => `<tr><td>${esc(b.name)}</td><td>${b.unit}</td><td>${fmt3(b.opening)}</td><td>${fmt3(b.inn)}</td><td>${fmt3(b.out)}</td><td class="ann ${b.bal < 0 || b.bal < b.need ? 'lowc' : ''}">${fmt3(b.bal)}</td><td>${b.need ? fmt3(b.need) : ''}${b.need && b.bal < b.need ? ' <span class="lowc">ناقص ' + fmt3(b.need - b.bal) + '</span>' : ''}</td></tr>`).join('')}</table></div></div>` : '<div class="card">ضيف الأصناف الأول من تاب الأصناف.</div>';
+  } else if (S.sub === 'in') {
+    const L = S.store.receipts.slice().sort((a, b) => (b.date + b.id) < (a.date + a.id) ? -1 : 1).slice(0, 60);
+    body = `<div class="card"><h3>تسجيل وارد للمخزن</h3><label>الصنف</label><select id="rItem">${itemOpts('')}</select>
+      <div class="row2" style="margin-top:8px"><div><label>الكمية</label><input id="rQty" type="number" inputmode="decimal" step="any"></div><div><label>التاريخ</label><input id="rDate" type="date" value="${iso(new Date())}"></div></div>
+      <label style="margin-top:8px">ملاحظة (المورد / رقم الإذن)</label><input id="rNote"><button class="btn" style="margin-top:8px;width:100%" data-act="receipt">تسجيل الوارد</button></div>
+      <div class="card"><h3>آخر الوارد</h3>${L.length ? `<div class="tw"><table class="t"><tr><th>التاريخ</th><th>الصنف</th><th>الكمية</th><th>ملاحظة</th><th></th></tr>${L.map(r => `<tr><td>${esc(r.date)}</td><td>${esc(r.item)}</td><td>${fmt3(r.qty)} ${unitOf(r.item)}</td><td>${esc(r.note)}</td><td><button class="link" data-act="delreceipt" data-id="${esc(r.id)}">حذف</button></td></tr>`).join('')}</table></div>` : '<p class="mut">لسه مفيش.</p>'}</div>`;
+  } else if (S.sub === 'out') {
+    const L = S.store.issues.slice().sort((a, b) => (b.date + b.id) < (a.date + a.id) ? -1 : 1).slice(0, 60);
+    body = `<div class="card"><h3>صرف يدوي (برّه أمر التشغيل)</h3><label>الصنف</label><select id="xItem">${itemOpts('')}</select>
+      <div class="row2" style="margin-top:8px"><div><label>الكمية</label><input id="xQty" type="number" inputmode="decimal" step="any"></div><div><label>التاريخ</label><input id="xDate" type="date" value="${iso(new Date())}"></div></div>
+      <label style="margin-top:8px">لمين / المحصول</label><input id="xTo" list="cropsDl"><datalist id="cropsDl">${S.crops.map(c => `<option value="${esc(c.name)}">`).join('')}</datalist>
+      <label style="margin-top:8px">ملاحظة</label><input id="xNote"><button class="btn" style="margin-top:8px;width:100%" data-act="manualissue">تسجيل الصرف</button></div>
+      <div class="card"><h3>آخر المنصرف</h3>${L.length ? `<div class="tw"><table class="t"><tr><th>التاريخ</th><th>الصنف</th><th>الكمية</th><th>إلى</th><th>النوع</th><th></th></tr>${L.map(r => `<tr><td>${esc(r.date)}</td><td>${esc(r.item)}</td><td>${fmt3(r.qty)} ${unitOf(r.item)}</td><td>${esc(r.to)}</td><td>${r.lineId ? 'أمر تشغيل أ' + esc(r.week) : 'يدوي'}</td><td>${r.lineId ? '' : `<button class="link" data-act="delissue" data-id="${esc(r.id)}">حذف</button>`}</td></tr>`).join('')}</table></div>` : '<p class="mut">لسه مفيش.</p>'}</div>`;
+  } else {
+    const adm = !isStore();
+    body = `<div class="card"><h3>أصناف المخزن</h3><p class="mut">الوحدة كجم أو لتر. الرصيد الافتتاحي = اللي في المخزن النهارده قبل أول وارد.</p><div id="itemRows">
+      ${S.store.items.map(i => itemRow(i)).join('')}</div>
+      <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="additem">+ صنف</button><button class="btn" data-act="saveitems">حفظ الأصناف</button></div>
+      ${adm ? '<button class="btn" style="margin-top:8px;width:100%" data-act="importerp">تحميل أصناف وأرصدة ERPNext (' + ERP_ITEMS.split(';').length + ' صنف)</button>' : ''}
+      ${adm ? '<button class="btn sec" style="margin-top:8px;width:100%" data-act="importitems">استيراد الأصناف من قوايم الأسمدة والرش</button>' : ''}</div>`;
+  }
+  v.innerHTML = hello + tabs + body;
+}
+// رصيد مخزن ERPNext بتاريخ 18/11/2026 (اسم|كمية|وحدة K=كجم L=لتر U=لتر) — أعداد فقط
+const ERP_ITEMS = 'فيتال أوكسين|6|L;دي في|103|L;نترات بوتاسيوم|121|K;فولفيك|27.6|K;نترات كالسيوم|3600|K;أكس كلور نحاس|9.5|K;سلفات زنك|409|K;جول|1.5|L;فاستيل المونيوم|4|K;يوريا|1079|K;حامض كبريتيك|46|L;حامض فوسفوريك|914.15|L;نترات نشادر|1027|K;سلفات ماغنسيوم|1970|K;حامض نيتريك|920|L;لمبادا 5%|22|L;كوسيد|7.5|K;فيوزليد سوبر|4.2|L;كبريتات نحاس|9|K;سلفات بوتاسيوم|3329.15|K;هيومك|45.6|K;ايثريل|0.25|L;بارافوس|1|L;سيتو العالمية|0.1|L;دبل|3.9|K;ماب|320|K;توب كالسيوم|5.5|K;أندول|9.251|K;كبريت ميكرونى|7.9|K;زينكو|52|L;منجنيز مخلبى|0.5|K;ريدوميل جولد بلاس|0.9|K;حديد 6%|36|K;حديد مخلبي|67|K;فاجن|0.6|L;تراك|1|L;درومكس|610.001|L;كال زي|14|L;أرينا|4.5|L;انفكت|1|K;زنك مخلبى|9|K;سيكيكو|2.5|K;باي كير|11|L;سيتريك اسيد|24.5|K;امستار توب|0.25|L;تبارك اينوفشن|7|L;سوبر تاك|1|L;بارنيكس %72|2|K;دروكالم|0.6|K;اوبزيت|9|L;يوني بمب|16.5|L;ست العاقد|1|L;فون توب|0.2|L;كالسيوم بريمكس|12.2|L;جليكو سي|1|L;برافوس|1|L;كروبس امينو|0.1|L;تراي فوس|1.6|L;فيكام|3.6|L;بروفي|1|L;سوليكل|0.8|L;متوازن|50|K;KTS|0.5|L;صابون بوتاسى|56|K;دام كي|18|L;دام سويل جولد|1|L;سيف بلانت|1.5|L;نانو ميكس|0.5|L;فينالدوم|0.2|L;رانجر جولد|1|L;رافيجر|1|L;اندوجار|0.5|L;فيلانو|1.2|L;جاتاك|28.1|L;زيركون|1|L;دفنس كالسيوم|1|L;بيرا سال|8|L;طحالب بحرية|42|L;فليكس روت|27.2|L;فليكس باسيل|4.5|L;فرس سيت باور|0.375|K;ماموث زنك|7.25|L;سلفات منجنيز|247|K;نترات ماغنسيوم|19|K;كانتون|82|L;بيفنكت|0.2|L;ايجكسيد|3|L;سلفادو|1.2|K;بوينت ماس|3.2|L;امامكتين بنزوات|1.26|L;بورون 15%|1|L;ريدهوب|4.1|L;يونيدرون|7.5|L;تاراكلور|0.2|L;ماجنوك|14.2|K;بست ميكاب|1|L;ايفر ستوبلكس|0.3|L;يورو اليكسا|2.075|K;بزاف 10%|17.254|L;سيلا كاب|1.5|L;جلاكسي|25|L;بارامول|9.5|L;كويك كومبي|0.55|K;هولو كيور|0.5|L;بوراكس|11.5|K;دوسكابين|2.8|K;مونو بوتاسيوم فوسفات|12.5|K;نيوتك موب|2.1|L;ارزن|1.5|K;سوبر فوسفات ناعم|50|K;سوتير|0.4|L;نيماكوايت|5|L;كبريت زراعي|9|K;ملاثيون النصر|6|L;ماتيراندو|6.1|L;بيلارميت|2.3|K;يوروفيلم|10|L;أورجانو كي|23|L;أونيل|1.8|L;دمبر|0.3|L;تروجولد|1|L;جولفر|0.1|L;كارفيت|0.9|L;بيلكرافيت %24|2.75|L;دياترو|0.5|L;نيوزد بورونديم|3.6|L;رايفديل|1.8|L;بيستيكس فوسفيتوب|5.3|L;سبيدر جولد ماكس|0.35|L;ديكلاك|0.3|L;سبورت 10%|0.75|L;كوداثرين|7|L;دلتالوجي 5%|7.5|L;نيلبو|14.75|K;ماموث كالسيوم ماغنسيوم|31|L;كانوتين %5|2.72|L;جلايفوكير|12|L;زنك اكسترا|25|K;كدياندا تترازون|15|L;ريست كونترول|30|L';
+const itemRow = i => `<div class="itemrow"><input class="in2" value="${esc(i.name)}" placeholder="اسم الصنف"><input class="it" value="${esc(i.type || '')}" placeholder="النوع (سماد/مبيد…)"><select class="iu"><option ${i.unit === 'كجم' ? 'selected' : ''}>كجم</option><option ${i.unit === 'لتر' ? 'selected' : ''}>لتر</option></select><input class="io" type="number" inputmode="decimal" step="any" value="${esc(i.opening || '')}" placeholder="افتتاحي"><button class="btn warn sm" data-act="delitem">حذف</button></div>`;
+
+async function storeCall(action, payload, okMsg){
+  try { const j = await api(action, payload); if (j.store) S.store = j.store; if (okMsg) toast(okMsg); render(true); }
   catch (e) { toast('فشل: ' + e.message); }
+}
+async function storeAct(act, b){
+  switch (act) {
+    case 'sub': S.sub = b.dataset.sub; render(); break;
+    case 'issue': {
+      const box = b.closest('.reql'), q = parseFloat($('.iq', box).value);
+      if (!(q >= 0)) { toast('اكتب الكمية'); break; }
+      await storeCall('storeIssue', { lineId: b.dataset.id, qty: q, note: $('.in', box).value.trim() }, 'اتسجل الصرف'); break;
+    }
+    case 'unissue': if (confirm('تلغي الصرف ده؟ الكمية هترجع للرصيد.')) await storeCall('storeUnissue', { lineId: b.dataset.id }, 'اتلغى الصرف'); break;
+    case 'receipt': {
+      const item = $('#rItem').value, qty = parseFloat($('#rQty').value);
+      if (!item || !(qty > 0)) { toast('اختار الصنف واكتب الكمية'); break; }
+      await storeCall('storeReceipt', { item, qty, date: $('#rDate').value, note: $('#rNote').value.trim() }, 'اتسجل الوارد'); break;
+    }
+    case 'delreceipt': if (confirm('تمسح الوارد ده؟')) await storeCall('storeDeleteReceipt', { id: b.dataset.id }, 'اتمسح'); break;
+    case 'manualissue': {
+      const item = $('#xItem').value, qty = parseFloat($('#xQty').value);
+      if (!item || !(qty > 0)) { toast('اختار الصنف واكتب الكمية'); break; }
+      await storeCall('storeManualIssue', { item, qty, date: $('#xDate').value, to: $('#xTo').value.trim(), note: $('#xNote').value.trim() }, 'اتسجل الصرف'); break;
+    }
+    case 'delissue': if (confirm('تمسح الصرف ده؟')) await storeCall('storeDeleteIssue', { id: b.dataset.id }, 'اتمسح'); break;
+    case 'additem': $('#itemRows').insertAdjacentHTML('beforeend', itemRow({ name: '', type: '', unit: 'كجم', opening: '' })); break;
+    case 'delitem': if (confirm('تشيل الصنف ده من القايمة؟')) b.closest('.itemrow').remove(); break;
+    case 'saveitems': {
+      const items = $$('.itemrow').map(r => ({ name: $('.in2', r).value.trim(), type: $('.it', r).value.trim(), unit: $('.iu', r).value, opening: parseFloat($('.io', r).value) || 0 })).filter(i => i.name);
+      if (new Set(items.map(i => i.name)).size !== items.length) { toast('فيه اسمين متكررين'); break; }
+      await storeCall('storeSaveItems', { items }, 'اتحفظت الأصناف'); break;
+    }
+    case 'importerp': {
+      const have = new Set($$('.in2').map(x => x.value.trim())); let n = 0;
+      ERP_ITEMS.split(';').forEach(t => { const [name, q, u] = t.split('|'); if (have.has(name)) return; have.add(name); n++;
+        $('#itemRows').insertAdjacentHTML('beforeend', itemRow({ name, type: 'أسمدة ومبيدات', unit: u === 'K' ? 'كجم' : 'لتر', opening: parseFloat(q) })); });
+      toast(n ? 'اتضاف ' + n + ' صنف برصيدهم — راجع واضغط حفظ الأصناف' : 'كلهم موجودين'); break;
+    }
+    case 'importitems': {
+      const have = new Set($$('.in2').map(x => x.value.trim())); let n = 0;
+      const add = (list, type, unit) => list.forEach(x => { if (!have.has(x)) { have.add(x); n++; $('#itemRows').insertAdjacentHTML('beforeend', itemRow({ name: x, type, unit, opening: '' })); } });
+      add(S.lists.fert, 'سماد', 'كجم'); add(S.lists.spray, 'مبيد / رش', 'لتر');
+      toast(n ? 'اتضاف ' + n + ' صنف — راجع الوحدات واضغط حفظ' : 'مفيش جديد'); break;
+    }
+  }
 }
 
 /* ================= الإعدادات ================= */
@@ -508,10 +712,14 @@ function viewSettings(v){
       <label style="margin-top:8px">مراحل النمو</label><textarea id="lsStage" rows="5">${esc(S.lists.stage.join('\n'))}</textarea>
       <label style="margin-top:8px">أنواع الرش</label><textarea id="lsSpray" rows="5">${esc(S.lists.spray.join('\n'))}</textarea>
       <button class="btn" style="margin-top:8px" data-act="savelists">حفظ القوائم</button></div>
+    <div class="card"><h3>مسئولي المخزن</h3><p class="mut">كل واحد بيدخل برقم موبايله (من شاشة الدخول ← مسئول المخزن).</p><div id="userRows">
+      ${S.users.map(u => userRow(u.name, u.phone)).join('')}</div>
+      <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="adduser">+ مسئول</button><button class="btn" data-act="saveusers">حفظ</button></div></div>
     <div class="card"><h3>الحساب</h3><p class="mut" dir="ltr" style="text-align:left;word-break:break-all">${esc(API)}</p>
       <button class="btn warn" data-act="logout">تغيير الرابط / الكود</button></div>`;
 }
 const cropRow = (name, area, old) => `<div class="croprow" data-old="${esc(old)}"><input class="cn" value="${esc(name)}" placeholder="اسم المحصول"><input class="ca" type="number" inputmode="decimal" step="any" value="${esc(area)}" placeholder="فدان"><button class="btn warn sm" data-act="delcrop">حذف</button></div>`;
+const userRow = (name, phone) => `<div class="userrow"><input class="un" value="${esc(name)}" placeholder="الاسم"><input class="up" dir="ltr" type="tel" inputmode="tel" value="${esc(phone)}" placeholder="رقم الموبايل"><button class="btn warn sm" data-act="deluser">حذف</button></div>`;
 const linesOf = id => [...new Set($('#' + id).value.split('\n').map(x => x.trim()).filter(Boolean))];
 
 /* ================= الأحداث ================= */
@@ -526,7 +734,7 @@ view.addEventListener('change', e => {
   if (t.dataset && t.dataset.kind && t.value === '__new__') { onSelChange(t); markDirty(); }
 });
 view.addEventListener('click', async e => {
-  const st = e.target.closest('[data-st]'); if (st) { setStatus(st.dataset.st); return; }
+  const st = e.target.closest('[data-st]'); if (st) { setStatus(st.dataset.st, !!st.dataset.lines); return; }
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act, card = b.closest('details.day');
   switch (act) {
@@ -566,7 +774,15 @@ view.addEventListener('click', async e => {
       S.lists = { fert: linesOf('lsFert'), stage: linesOf('lsStage'), spray: linesOf('lsSpray') };
       try { await api('saveLists', S.lists); toast('اتحفظت القوائم'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
-    case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); API = API_DEFAULT; CODE = ''; showLogin(); } break;
+    case 'adduser': $('#userRows').insertAdjacentHTML('beforeend', userRow('', '')); break;
+    case 'deluser': b.closest('.userrow').remove(); break;
+    case 'saveusers': {
+      const users = $$('.userrow').map(r => ({ name: $('.un', r).value.trim(), phone: $('.up', r).value.trim() })).filter(u => u.name || u.phone);
+      if (users.some(u => !u.name || D2(u.phone).replace(/\D/g, '').length < 10)) { toast('اكتب اسم ورقم موبايل صحيح لكل واحد'); break; }
+      try { await api('saveUsers', { users }); S.users = users; toast('اتحفظ'); } catch (x) { toast('فشل: ' + x.message); } break;
+    }
+    case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); store.del('phone'); API = API_DEFAULT; CODE = ''; PHONE = ''; showLogin(); } break;
+    default: storeAct(act, b);
   }
 });
 
