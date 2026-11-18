@@ -397,7 +397,7 @@ function viewHome(v){
     const irr = has.filter(r => r.o.irr).length, fe = new Set(), sp = new Set();
     has.forEach(r => { r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fe.add(x.n); }); if (r.o.spray) sp.add(r.o.spray); });
     nFert += fe.size; nSpray += sp.size;
-    const body = rows.map(r => {
+    const body = has.map(r => {
       const o = r.o, d = r.d, e = !o || isEmpty(o), t = iso(d) === todayIso;
       const head = `<td class="dy">${dayName(d)}<small>${dm(d)}${t ? ' · النهارده' : ''}</small></td>`;
       if (e) return `<tr class="em ${t ? 'td' : ''}">${head}<td colspan="5">—</td></tr>`;
