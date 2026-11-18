@@ -235,6 +235,8 @@ function objToRow(crop, date, o){
   return r;
 }
 // إجمالي الرش للصنف: كمية الفلاية × عدد الفلايات
+// يوم فيه شغل فعلي: ري أو تسميد أو رش أو معاملة ميكانيكية (المرحلة والملاحظات لوحدهم مش شغل)
+const hasWork = o => !!(parseFloat(o.irr) > 0 || o.f.some(x => x.n && parseFloat(x.q) > 0) || o.spray || String(o.mech || '').trim());
 function sprayTot(o){ const q = parseFloat(o.sq); if (!o.spray || !q) return 0; return q * (parseFloat(o.tk) || 1); }
 function sprayTxt(o){
   if (!o.spray) return '';
@@ -392,7 +394,7 @@ function viewHome(v){
   let nFert = 0, nSpray = 0;
   S.crops.forEach(c => {
     const rows = Array.from({ length: 7 }, (_, i) => { const d = addDays(ws, i); return { d, o: S.program.get(c.name + '|' + iso(d)) }; });
-    const has = rows.filter(r => r.o && !isEmpty(r.o));
+    const has = rows.filter(r => r.o && hasWork(r.o));
     if (!has.length) { none.push(c); return; }
     const irr = has.filter(r => r.o.irr).length, fe = new Set(), sp = new Set();
     has.forEach(r => { r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fe.add(x.n); }); if (r.o.spray) sp.add(r.o.spray); });
