@@ -1,5 +1,5 @@
-// Service worker بسيط: بيحفظ شكل الأب، والبيانات دايما من النت (من الشيت)
-const CACHE = 'sanmark-v2';
+// Service worker: الأب بيفتح فورًا من الكاش (شكل الأب)، وبيتحدّث في الخلفية. البيانات (الشيت) متتلمسش هنا.
+const CACHE = 'sanmark-v3';
 const SHELL = ['./', 'index.html', 'icon-192.png', 'icon-512.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {
@@ -10,12 +10,10 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
-  if (req.method !== 'GET' || url.origin !== self.location.origin) return; // طلبات الشيت (Apps Script) متتلمسش
-  e.respondWith(
-    fetch(req).then(res => {
-      const copy = res.clone();
-      caches.open(CACHE).then(c => c.put(req, copy));
-      return res;
-    }).catch(() => caches.match(req).then(r => r || caches.match('index.html')))
-  );
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  e.respondWith(caches.open(CACHE).then(async c => {
+    const hit = await c.match(req, { ignoreSearch: true });
+    const net = fetch(req).then(res => { if (res.ok) c.put(req, res.clone()); return res; }).catch(() => hit);
+    return hit || net;
+  }));
 });

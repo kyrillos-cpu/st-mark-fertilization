@@ -195,6 +195,7 @@ async function api(action, payload){
     else r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, ...(CODE ? { code: CODE } : { phone: PHONE }), ...payload }) });
     const j = await r.json();
     if (!j.ok) throw new Error(j.error || 'حصل خطأ');
+    if (payload && typeof touchCache === 'function') touchCache();
     return j;
   } finally { busy(false); }
 }
@@ -242,10 +243,18 @@ function sprayTxt(o){
 }
 const fmt3 = n => String(Math.round(Number(n) * 1000) / 1000);
 
-async function load(){
-  if (!CODE) { const w = await api('whoami'); S.role = w.role; S.who = w.name; } else { S.role = 'admin'; S.who = ''; }
-  if (isStore()) { const j = await api('getStore'); S.store = j.store; S.tab = 'store'; return; }
-  const j = await api('getAll');
+// ===== تحميل البيانات: كاش محلي بيفتح الأب فورًا، والتحديث بيتم في الخلفية =====
+const CKEY = 'sm_cache_v1';
+const idKey = () => (CODE ? 'c:' + CODE : 'p:' + PHONE) + '@' + API;
+async function fetchData(){
+  if (CODE) { const j = await api('getAll'); return { id: idKey(), role: 'admin', who: '', all: j }; }
+  try { const j = await api('getAll'); return { id: idKey(), role: j.role, who: j.name, all: j }; }
+  catch (e) { const w = await api('whoami'); if (w.role !== 'store') throw e; const j = await api('getStore'); return { id: idKey(), role: 'store', who: w.name, store: j.store }; }
+}
+function applyData(d){
+  S.role = d.role; S.who = d.who || '';
+  if (d.store) { S.store = d.store; S.tab = 'store'; return; }
+  const j = d.all;
   S.store = j.store || S.store; S.users = j.users || [];
   if (isEng() && ['store', 'settings'].includes(S.tab)) S.tab = 'home';
   if (isWorker()) S.tab = 'work';
@@ -254,6 +263,20 @@ async function load(){
   j.program.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
   if (!S.crops.find(c => c.name === S.crop)) S.crop = (S.crops[0] || {}).name || '';
   if (!S.tCrop || (S.tCrop !== '*' && !S.crops.find(c => c.name === S.tCrop))) S.tCrop = '*';
+}
+function saveCache(d){ try { localStorage.setItem(CKEY, JSON.stringify(d)); } catch (e) {} }
+function readCache(){ try { const d = JSON.parse(localStorage.getItem(CKEY) || 'null'); return d && d.id === idKey() ? d : null; } catch (e) { return null; } }
+async function load(){ const d = await fetchData(); applyData(d); saveCache(d); }
+let _rc; function touchCache(){ clearTimeout(_rc); _rc = setTimeout(async () => { try { saveCache(await fetchData()); } catch (e) {} }, 1500); }
+// تحديث في الخلفية بعد ما الأب يفتح من الكاش
+async function bgRefresh(){
+  const btn = $('#reload'); btn.textContent = '…';
+  try {
+    const d = await fetchData(); saveCache(d);
+    const busy = S.dirty || (document.activeElement && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName));
+    if (!busy) { applyData(d); render(true); }
+  } catch (e) { if (/كود|مسجّل|غلط/.test(e.message || '')) showLogin(e.message); }
+  btn.textContent = 'تحديث';
 }
 
 /* ================= الدخول ================= */
@@ -282,6 +305,8 @@ $('#lGo').onclick = async () => {
 
 async function boot(){
   if (!API || (!CODE && !PHONE)) return showLogin();
+  const c = readCache();
+  if (c) { try { applyData(c); startApp(); bgRefresh(); return; } catch (e) { /* كاش بايظ: نحمّل من الأول */ } }
   try { await load(); startApp(); } catch (e) { showLogin(e.message); }
 }
 function startApp(){
@@ -291,7 +316,7 @@ function startApp(){
   if (!isStore() && S.tab === 'store' && !S.keepStore) S.tab = 'home';
   renderNav(); render();
 }
-$('#hout').onclick = () => { if (confirm('تخرج؟')) { store.del('phone'); PHONE = ''; showLogin(); } };
+$('#hout').onclick = () => { if (confirm('تخرج؟')) { store.del('phone'); PHONE = ''; try { localStorage.removeItem(CKEY); } catch (e) {} showLogin(); } };
 $('#reload').onclick = async () => {
   if (S.dirty && !confirm('فيه تعديلات متحفظتش. تحديث هيمسحها؟')) return;
   try { await load(); S.dirty = false; render(); toast('اتحدّث'); } catch (e) { toast(e.message); }
@@ -888,7 +913,7 @@ view.addEventListener('click', async e => {
       if (users.some(u => !u.name || D2(u.phone).replace(/\D/g, '').length < 10)) { toast('اكتب اسم ورقم موبايل صحيح لكل واحد'); break; }
       try { await api('saveUsers', { users }); S.users = users; toast('اتحفظ'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
-    case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); store.del('phone'); API = API_DEFAULT; CODE = ''; PHONE = ''; showLogin(); } break;
+    case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); store.del('phone'); try { localStorage.removeItem(CKEY); } catch (e) {} API = API_DEFAULT; CODE = ''; PHONE = ''; showLogin(); } break;
     default: storeAct(act, b);
   }
 });
