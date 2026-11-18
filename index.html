@@ -323,7 +323,7 @@ $('#reload').onclick = async () => {
 };
 
 /* ================= التنقل ================= */
-const TABS = [['home', 'الرئيسية'], ['program', 'البرنامج'], ['totals', 'الإجماليات'], ['order', 'أمر التشغيل'], ['store', 'المخزن'], ['settings', 'الإعدادات']];
+const TABS = [['home', 'الرئيسية'], ['program', 'البرنامج'], ['totals', 'الإجماليات'], ['store', 'المخزن'], ['settings', 'الإعدادات']];
 function renderNav(){
   $('#nav').style.display = (isStore() || isWorker()) ? 'none' : 'flex';
   $('#nav').innerHTML = TABS.filter(t => !isEng() || !['store', 'settings'].includes(t[0])).map(([k, n]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${n}</button>`).join('');
@@ -378,7 +378,7 @@ function viewWork(v){
   const reqs = S.store.requests.filter(r => r.week === w && mineSet.has(r.item));
   const reqHtml = reqs.length ? `<div class="card"><h3>الكميات اللي هتستلمها من المخزن</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th>المحصول</th><th>المطلوب</th><th>حالة الصرف</th></tr>
     ${reqs.map(r => `<tr><td>${esc(r.item)}</td><td>${esc(r.crop)}</td><td>${fmt3(r.need)} ${esc(r.unit)}</td><td>${r.status === 'done' ? '<span class="okc">اتصرف ' + fmt3(r.issued) + ' ' + esc(r.unit) + '</span>' : '<span class="mut">لسه</span>'}</td></tr>`).join('')}</table></div></div>`
-    : `<div class="card mut">${(S.orders[w] || {}).status === 'approved' ? 'مفيش كميات للأسبوع ده.' : 'الكميات بتظهر هنا بعد ما المدير يعتمد أمر التشغيل.'}</div>`;
+    : `<div class="card mut">${'مفيش كميات للأسبوع ده.'}</div>`;
   v.innerHTML = `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— ${ROLE_NAME[S.role]} (عرض فقط)</span></div>${weekNav()}
     <div class="hero"><h2>${spr ? 'برنامج الرش' : 'برنامج التسميد والري'} — أسبوع ${w}</h2><div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div></div>
     ${reqHtml}${cards.join('') || '<div class="card">مفيش شغل مسجل ليك الأسبوع ده.</div>'}`;
@@ -429,7 +429,7 @@ function viewHome(v){
   v.innerHTML = `${todayCard}${weekNav()}
     <div class="hero"><h2>برنامج أسبوع ${w}</h2>
       <div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
-      <div class="st"><span>${cards.length} محصول عليه برنامج</span><span>${nFert} صنف تسميد</span><span>${nSpray} صنف رش</span><span>أمر التشغيل: ${statusLabel(od.status)}</span></div></div>
+      <div class="st"><span>${cards.length} محصول عليه برنامج</span><span>${nFert} صنف تسميد</span><span>${nSpray} صنف رش</span></div></div>
     ${cards.join('') || '<div class="card">مفيش برنامج مسجل للأسبوع ده. دوس "تعديل" على أي محصول أو افتح تاب البرنامج.</div>'}
     ${none.length ? `<div class="mut" style="margin:10px 0 4px">محاصيل من غير برنامج الأسبوع ده:</div>` + none.map(c => `<div class="hnone"><span>${esc(c.name)}</span><button class="btn sec sm" data-act="editcrop" data-crop="${esc(c.name)}">ابدأ البرنامج</button></div>`).join('') : ''}`;
 }
@@ -504,11 +504,13 @@ async function saveWeek(){
     if (!isEmpty(o)) rows.push(objToRow(S.crop, c.dataset.iso, o));
   }
   try {
-    await api('saveDays', { crop: S.crop, dates, rows });
+    const area = (S.crops.find(c => c.name === S.crop) || {}).area || 0;
+    const lines = linesFor(S.crop, area, rows.map(r => rowToObj(r)));
+    await api('saveDays', { crop: S.crop, week: S.week, lines, dates, rows });
     dates.forEach(d => S.program.delete(S.crop + '|' + d));
     rows.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
     S.dirty = false; const b = $('#sbar'); if (b) b.classList.remove('dirty');
-    toast('تم حفظ الأسبوع');
+    toast(lines.length ? 'تم حفظ الأسبوع — اتبعت ' + lines.length + ' طلب صرف للمخزن' : 'تم حفظ الأسبوع');
     cards.forEach(c => { const o = readDay(c); c.classList.toggle('has', !isEmpty(o)); c.querySelector('.dsum').textContent = summaryOf(o); });
   } catch (e) { toast('الحفظ فشل: ' + e.message); }
 }
@@ -692,15 +694,20 @@ function waText(){
 // ===== طلبات الصرف اللي بتتولد من أمر التشغيل =====
 const FAM = { 'مل': ['لتر', 1000], 'لتر': ['لتر', 1], 'جم': ['كجم', 1000], 'كجم': ['كجم', 1] };
 const itemOf = n => S.store.items.find(i => i.name === n);
-function buildLines(w){
-  const m = new Map(), put = (crop, item, unit, qty) => { const k = crop + '|' + item; const a = m.get(k) || { crop, item, unit, qty: 0 }; a.qty += qty; m.set(k, a); };
-  sections(w).forEach(sc => sc.rows.forEach(r => {
-    const o = r.o; if (!o) return;
-    o.f.forEach(x => { const q = parseFloat(x.q); if (!x.n || !q) return; const it = itemOf(x.n); put(sc.c.name, x.n, it ? it.unit : 'كجم', q * sc.c.area); });
+function linesFor(crop, area, objs){
+  const m = new Map(), put = (item, unit, qty) => { const a = m.get(item) || { item, unit, qty: 0 }; a.qty += qty; m.set(item, a); };
+  objs.forEach(o => {
+    if (!o) return;
+    o.f.forEach(x => { const q = parseFloat(x.q); if (!x.n || !q) return; const it = itemOf(x.n); put(x.n, it ? it.unit : 'كجم', q * area); });
     const t = sprayTot(o);
-    if (t) { const [bu, dv] = FAM[o.su] || ['لتر', 1000]; put(sc.c.name, o.spray, bu, t / dv); }
-  }));
+    if (t) { const [bu, dv] = FAM[o.su] || ['لتر', 1000]; put(o.spray, bu, t / dv); }
+  });
   return [...m.values()].map(l => ({ ...l, qty: Math.round(l.qty * 1000) / 1000 })).filter(l => l.qty > 0);
+}
+function buildLines(w){
+  const out = [];
+  sections(w).forEach(sc => linesFor(sc.c.name, sc.c.area, sc.rows.map(r => r.o)).forEach(l => out.push({ crop: sc.c.name, ...l })));
+  return out;
 }
 async function setStatus(st, withLines){
   const prev = (S.orders[S.week] || {}).status;
@@ -722,7 +729,8 @@ function balances(){
   const get = n => m.get(n);
   S.store.receipts.forEach(r => { const b = get(r.item); if (b) b.inn += r.qty; });
   S.store.issues.forEach(r => { const b = get(r.item); if (b) b.out += r.qty; });
-  S.store.requests.forEach(r => { if (r.status !== 'done') { const b = get(r.item); if (b) b.need += r.need; } });
+  const cw = curWeek();
+  S.store.requests.forEach(r => { if (r.status !== 'done' && r.week <= cw + 1) { const b = get(r.item); if (b) b.need += r.need; } });
   m.forEach(b => { b.bal = b.opening + b.inn - b.out; });
   return m;
 }
@@ -731,15 +739,15 @@ const unitOf = n => (itemOf(n) || {}).unit || '';
 
 function viewStore(v){
   const keeper = isStore();
-  const tabs = `<div class="subtabs">${SUBS.map(([k, n]) => `<button data-act="sub" data-sub="${k}" class="${S.sub === k ? 'on' : ''}">${n}${k === 'req' ? ' (' + S.store.requests.filter(r => r.status !== 'done').length + ')' : ''}</button>`).join('')}</div>`;
+  const tabs = `<div class="subtabs">${SUBS.map(([k, n]) => `<button data-act="sub" data-sub="${k}" class="${S.sub === k ? 'on' : ''}">${n}${k === 'req' ? ' (' + S.store.requests.filter(r => r.status !== 'done' && r.week <= curWeek() + 1).length + ')' : ''}</button>`).join('')}</div>`;
   const hello = keeper ? `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— مسئول المخزن</span></div>` : '';
   let body = '';
   const B = balances();
   if (S.sub === 'req') {
-    const weeks = [...new Set(S.store.requests.map(r => r.week))].sort((a, b) => b - a);
+    const cw = curWeek(), weeks = [...new Set(S.store.requests.map(r => r.week))].sort((a, b) => (a < cw - 1) - (b < cw - 1) || a - b);
     body = weeks.length ? weeks.map(w => {
       const L = S.store.requests.filter(r => r.week === w), open = L.filter(r => r.status !== 'done').length, ws = weekStart(w);
-      return `<details class="card" ${open ? 'open' : ''}><summary style="cursor:pointer"><b>أسبوع ${w}</b> <span class="mut">(${dm(ws)} – ${dm(addDays(ws, 6))})</span> <span class="chip ${open ? 's1' : 's2'}">${open ? open + ' مفتوح' : 'خلص'}</span></summary>
+      return `<details class="card" ${open && w <= cw + 1 ? 'open' : ''}><summary style="cursor:pointer"><b>أسبوع ${w}</b>${w === cw ? ' <span class="chip s1">الحالي</span>' : ''}${w > cw + 1 ? ' <span class="mut">(قادم)</span>' : ''} <span class="mut">(${dm(ws)} – ${dm(addDays(ws, 6))})</span> <span class="chip ${open ? 's1' : 's2'}">${open ? open + ' مفتوح' : 'خلص'}</span></summary>
         ${L.map(r => {
           const b = B.get(r.item), done = r.status === 'done';
           const stock = b ? `الرصيد: <span class="${b.bal < r.need && !done ? 'lowc' : ''}">${fmt3(b.bal)} ${b.unit}</span>` : '<span class="lowc">الصنف مش متسجل في الأصناف</span>';
@@ -748,10 +756,10 @@ function viewStore(v){
             : `<div class="reql"><div class="top"><b>${esc(r.item)}</b><span>${esc(r.crop)}</span></div><div class="mut">المطلوب: <b>${fmt3(r.need)} ${esc(r.unit)}</b> — ${stock}</div>
               <div class="go"><input type="number" inputmode="decimal" step="any" class="iq" value="${r.need}"><input class="in" placeholder="ملاحظة"><button class="btn sm" data-act="issue" data-id="${esc(r.id)}">صرف</button></div></div>`;
         }).join('')}</details>`;
-    }).join('') : '<div class="card">مفيش طلبات صرف. بتظهر هنا أوتوماتيك لما المدير يعتمد أمر التشغيل الأسبوعي.</div>';
+    }).join('') : '<div class="card">مفيش طلبات صرف. بتظهر هنا أوتوماتيك أول ما يتسجل ويتحفظ برنامج أي محصول.</div>';
   } else if (S.sub === 'bal') {
     const rows = [...B.values()];
-    body = rows.length ? `<div class="card"><h3>رصيد المخزن (أعداد فقط)</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th>الوحدة</th><th>افتتاحي</th><th>وارد</th><th>منصرف</th><th class="ann">الرصيد</th><th>مطلوب (طلبات مفتوحة)</th></tr>
+    body = rows.length ? `<div class="card"><h3>رصيد المخزن (أعداد فقط)</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th>الوحدة</th><th>افتتاحي</th><th>وارد</th><th>منصرف</th><th class="ann">الرصيد</th><th>مطلوب (الأسبوع الحالي والجاي)</th></tr>
       ${rows.map(b => `<tr><td>${esc(b.name)}</td><td>${b.unit}</td><td>${fmt3(b.opening)}</td><td>${fmt3(b.inn)}</td><td>${fmt3(b.out)}</td><td class="ann ${b.bal < 0 || b.bal < b.need ? 'lowc' : ''}">${fmt3(b.bal)}</td><td>${b.need ? fmt3(b.need) : ''}${b.need && b.bal < b.need ? ' <span class="lowc">ناقص ' + fmt3(b.need - b.bal) + '</span>' : ''}</td></tr>`).join('')}</table></div></div>` : '<div class="card">ضيف الأصناف الأول من تاب الأصناف.</div>';
   } else if (S.sub === 'in') {
     const L = S.store.receipts.slice().sort((a, b) => (b.date + b.id) < (a.date + a.id) ? -1 : 1).slice(0, 60);
@@ -843,7 +851,7 @@ function viewSettings(v){
       <label style="margin-top:8px">مراحل النمو</label><textarea id="lsStage" rows="5">${esc(S.lists.stage.join('\n'))}</textarea>
       <label style="margin-top:8px">أنواع الرش</label><textarea id="lsSpray" rows="5">${esc(S.lists.spray.join('\n'))}</textarea>
       <button class="btn" style="margin-top:8px" data-act="savelists">حفظ القوائم</button></div>
-    <div class="card"><h3>المستخدمين بالموبايل</h3><p class="mut">كل واحد بيدخل برقم موبايله (شاشة الدخول ← دخول بالموبايل). المهندس بيسجل البرنامج ويبعته للمدير من غير اعتماد، ومسئول المخزن بيشوف المخزن بس، ومسئول الرش والتسميد بيشوفوا شغلهم والكميات اللي هيستلموها (عرض فقط).</p><div id="userRows">
+    <div class="card"><h3>المستخدمين بالموبايل</h3><p class="mut">كل واحد بيدخل برقم موبايله (شاشة الدخول ← دخول بالموبايل). المهندس بيسجل البرنامج (وطلبات الصرف بتتبعت للمخزن أول ما يحفظ)، ومسئول المخزن بيشوف المخزن بس، ومسئول الرش والتسميد بيشوفوا شغلهم والكميات اللي هيستلموها (عرض فقط).</p><div id="userRows">
       ${S.users.map(u => userRow(u.name, u.phone, u.role)).join('')}</div>
       <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="adduser">+ مسئول</button><button class="btn" data-act="saveusers">حفظ</button></div></div>
     <div class="card"><h3>الحساب</h3><p class="mut" dir="ltr" style="text-align:left;word-break:break-all">${esc(API)}</p>
