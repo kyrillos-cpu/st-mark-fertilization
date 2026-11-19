@@ -51,6 +51,10 @@ details.day.has>summary{background:var(--g2);border-radius:10px}
 .sub{font-weight:700;color:var(--g);margin-top:4px}
 .fr{display:grid;grid-template-columns:1fr 92px;gap:6px}
 .hid{display:none}
+.pk{position:relative;min-width:0}.pk .pki{width:100%}
+.pkl{position:absolute;right:0;left:0;top:100%;z-index:40;background:#fff;border:1px solid var(--bd);border-radius:10px;max-height:240px;overflow:auto;box-shadow:0 6px 18px rgba(0,0,0,.18);margin-top:2px}
+.pko{display:flex;justify-content:space-between;gap:8px;padding:11px 12px;border-bottom:1px solid #eee;cursor:pointer}
+.pko small{color:var(--mut);white-space:nowrap}.pkn{color:#1b5e20;font-weight:700}
 .sr{border-top:1px dashed var(--bd);padding-top:6px;margin-top:6px}
 .savebar{position:fixed;right:0;left:0;bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:8px;z-index:15;justify-content:center}
 .savebar .btn{flex:1;max-width:260px}
@@ -139,7 +143,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 7</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 8</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -448,21 +452,51 @@ function viewHome(v){
 /* ================= شاشة البرنامج ================= */
 let _bal, _balFor;
 function getBal(){ if (!_bal || _balFor !== S.store) { _bal = balances(); _balFor = S.store; } return _bal; }
-function sel(kind, val, key){
-  const NEW = '<option value="__new__">＋ إضافة اسم جديد…</option>';
-  // التسميد والرش: الاختيار من أصناف المخزن (مع الرصيد)، ولو المخزن لسه فاضي بنرجع للقوايم
-  if ((kind === 'fert' || kind === 'spray') && S.store.items.length) {
-    const B = getBal(), items = S.store.items.slice().sort((x, y) => x.name.localeCompare(y.name, 'ar'));
-    const known = new Set(items.map(i => i.name));
-    const opt = i => { const b = B.get(i.name), bal = b ? b.bal : 0;
-      return `<option value="${esc(i.name)}" ${i.name === val ? 'selected' : ''}>${esc(i.name)} — ${bal > 0 ? 'الرصيد ' + fmt3(bal) + ' ' + i.unit : '⚠ نفد'}</option>`; };
-    const extra = val && !known.has(val) ? `<option value="${esc(val)}" selected>${esc(val)} — مش في المخزن</option>` : '';
-    return `<select data-kind="${kind}" data-k="${key}"><option value="">— اختر من المخزن —</option>${extra}${items.map(opt).join('')}${NEW}</select>`;
+// قوائم التسميد والرش: خانة بحث بالكتابة (بتفلتر بالحروف) بدل القايمة الطويلة
+const normAr = t => D2(String(t || '')).toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+function pickOpts(kind){
+  if (S.store.items.length) {
+    const B = getBal();
+    return S.store.items.slice().sort((x, y) => x.name.localeCompare(y.name, 'ar')).map(i => { const b = B.get(i.name), bal = b ? b.bal : 0;
+      return { n: i.name, sub: bal > 0 ? 'الرصيد ' + fmt3(bal) + ' ' + i.unit : '⚠ نفد' }; });
   }
+  return S.lists[kind].map(n => ({ n, sub: '' }));
+}
+function sel(kind, val, key){
+  if (kind === 'fert' || kind === 'spray')
+    return `<div class="pk"><input class="pki" data-kind="${kind}" data-k="${key}" data-v="${esc(val)}" value="${esc(val)}" placeholder="🔍 اكتب للبحث…" autocomplete="off" autocorrect="off" spellcheck="false"><div class="pkl hid"></div></div>`;
+  const NEW = '<option value="__new__">＋ إضافة اسم جديد…</option>';
   const L = S.lists[kind].slice();
   if (val && !L.includes(val)) L.push(val);
   return `<select data-kind="${kind}" data-k="${key}"><option value="">— اختر —</option>${L.map(x => `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('')}${NEW}</select>`;
 }
+function pkShow(inp, q){
+  const box = inp.nextElementSibling, opts = pickOpts(inp.dataset.kind), words = normAr(q).split(' ').filter(Boolean);
+  const hit = opts.filter(o => { const t = normAr(o.n); return words.every(w => t.includes(w)); });
+  box.innerHTML = hit.map(o => `<div class="pko" data-n="${esc(o.n)}"><span>${esc(o.n)}</span><small>${esc(o.sub)}</small></div>`).join('')
+    + (!hit.length ? (q.trim() ? `<div class="pko pkn" data-new="${esc(q.trim())}">＋ إضافة «${esc(q.trim())}» كاسم جديد (مش في المخزن)</div>` : '<div class="pko mut">مفيش أصناف</div>') : '');
+  box.classList.remove('hid');
+}
+function pkClose(inp){ const b = inp.nextElementSibling; if (b) b.classList.add('hid'); }
+function pkSet(inp, name){ inp.value = name; inp.dataset.v = name; pkClose(inp); markDirty(); }
+document.addEventListener('focusin', e => { const t = e.target; if (!t.classList || !t.classList.contains('pki')) return;
+  t.select(); pkShow(t, ''); setTimeout(() => { try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {} }, 350); });
+document.addEventListener('input', e => { const t = e.target; if (t.classList && t.classList.contains('pki')) pkShow(t, t.value); });
+document.addEventListener('mousedown', e => { if (e.target.closest && e.target.closest('.pkl')) e.preventDefault(); });
+document.addEventListener('click', e => { const o = e.target.closest && e.target.closest('.pko'); if (!o) return;
+  const inp = o.closest('.pk').querySelector('.pki');
+  if (o.dataset.n !== undefined) { pkSet(inp, o.dataset.n); inp.blur(); }
+  else if (o.dataset.new) { const n = o.dataset.new, kind = inp.dataset.kind; if (!S.lists[kind].includes(n)) { S.lists[kind].push(n); saveLists(); } pkSet(inp, n); inp.blur(); } });
+document.addEventListener('focusout', e => { const t = e.target; if (!t.classList || !t.classList.contains('pki')) return;
+  setTimeout(() => {
+    pkClose(t);
+    const v = t.value.trim();
+    if (v === '') { if (t.dataset.v) { t.dataset.v = ''; markDirty(); } t.value = ''; return; }
+    if (v === t.dataset.v) return;
+    const hit = pickOpts(t.dataset.kind).find(o => normAr(o.n) === normAr(v));
+    if (hit) { t.value = hit.n; t.dataset.v = hit.n; markDirty(); return; }
+    t.value = t.dataset.v || ''; toast('اختار الصنف من القايمة (أو دوس إضافة كاسم جديد)');
+  }, 0); });
 function summaryOf(o){
   const p = [];
   if (o.irr) p.push('ري ' + o.irr + 'د×' + (o.freq || 1));
