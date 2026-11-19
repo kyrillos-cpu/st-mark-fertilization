@@ -51,6 +51,7 @@ details.day.has>summary{background:var(--g2);border-radius:10px}
 .sub{font-weight:700;color:var(--g);margin-top:4px}
 .fr{display:grid;grid-template-columns:1fr 92px;gap:6px}
 .hid{display:none}
+.sr{border-top:1px dashed var(--bd);padding-top:6px;margin-top:6px}
 .savebar{position:fixed;right:0;left:0;bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:8px;z-index:15;justify-content:center}
 .savebar .btn{flex:1;max-width:260px}
 .savebar.dirty{background:#fff8e1;border-top-color:#f9a825}
@@ -138,7 +139,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 6</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 7</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -220,8 +221,8 @@ function rowToObj(r){
   o.crop = String(r[0]); o.date = String(r[1]); o.stage = r[2]; o.irr = r[3]; o.freq = r[4];
   for (let i = 0; i < 6; i++) o.f[i] = { n: r[5 + i * 2] || '', q: r[6 + i * 2] };
   o.spray = r[17] || ''; o.sq = r[18]; o.mech = r[19]; o.notes = r[20];
-  o.su = SU.includes(r[21]) ? r[21] : 'مل'; o.tk = (r[22] === undefined || r[22] === null) ? '' : r[22];
-  if (typeof o.sq === 'string' && o.sq.trim() !== '' && isNaN(Number(o.sq))) {
+  o.su = (SU.includes(r[21]) || String(r[21] || '').includes('|')) ? r[21] : 'مل'; o.tk = (r[22] === undefined || r[22] === null) ? '' : r[22];
+  if (typeof o.sq === 'string' && !o.sq.includes('|') && o.sq.trim() !== '' && isNaN(Number(o.sq))) {
     const p = parseSq(o.sq);
     if (p) { o.sq = p.q; if (!SU.includes(r[21])) o.su = p.su; } else { o.notes = (o.notes ? o.notes + ' | ' : '') + 'كمية الرش: ' + o.sq; o.sq = ''; }
   }
@@ -231,18 +232,25 @@ function rowToObj(r){
 function objToRow(crop, date, o){
   const r = [crop, date, o.stage, num(o.irr), num(o.freq)];
   o.f.forEach(x => r.push(x.n, num(x.q)));
-  r.push(o.spray, num(o.sq), o.mech, o.notes, o.su || 'مل', num(o.tk));
+  const nm = v => String(v).includes('|') ? String(v) : num(v);
+  r.push(o.spray, nm(o.sq), o.mech, o.notes, o.su || 'مل', nm(o.tk));
   return r;
 }
-// إجمالي الرش للصنف: كمية الفلاية × عدد الفلايات
+// إجمالي الرش للصنف: كمية الأتومايزر × عدد الأتومايزرات
 // يوم فيه شغل فعلي: ري أو تسميد أو رش أو معاملة ميكانيكية (المرحلة والملاحظات لوحدهم مش شغل)
 const hasWork = o => !!(parseFloat(o.irr) > 0 || o.f.some(x => x.n && parseFloat(x.q) > 0) || o.spray || String(o.mech || '').trim());
-function sprayTot(o){ const q = parseFloat(o.sq); if (!o.spray || !q) return 0; return q * (parseFloat(o.tk) || 1); }
+// الرش ممكن يبقى أكتر من صنف: الأسماء والكميات والوحدات والأعداد متخزنة في نفس الخانات مفصولة بـ " | "
+const SPN = 4;
+function sprayEach(o){
+  const sp = v => String(v === undefined || v === null ? '' : v).split('|').map(s => s.trim());
+  const ns = sp(o.spray), qs = sp(o.sq), us = sp(o.su), ts = sp(o.tk), out = [];
+  ns.forEach((n, i) => { if (!n) return;
+    const q = parseFloat(qs[i]), k = parseFloat(ts[i]);
+    out.push({ n, q: q || 0, u: SU.includes(us[i]) ? us[i] : 'مل', k: k || 0, tot: q ? q * (k || 1) : 0 }); });
+  return out;
+}
 function sprayTxt(o){
-  if (!o.spray) return '';
-  const q = parseFloat(o.sq), k = parseFloat(o.tk);
-  if (!q) return o.spray;
-  return o.spray + ' ' + q + ' ' + o.su + '/فلاية' + (k ? ' × ' + k + ' فلاية = ' + fmt3(q * k) + ' ' + o.su : '');
+  return sprayEach(o).map(s => !s.q ? s.n : s.n + ' ' + s.q + ' ' + s.u + '/أتومايزر' + (s.k ? ' × ' + s.k + ' أتومايزر = ' + fmt3(s.q * s.k) + ' ' + s.u : '')).join(' + ');
 }
 const fmt3 = n => String(Math.round(Number(n) * 1000) / 1000);
 
@@ -368,7 +376,7 @@ function viewWork(v){
   S.crops.forEach(c => {
     const rows = Array.from({ length: 7 }, (_, i) => { const d = addDays(ws, i); return { d, o: S.program.get(c.name + '|' + iso(d)) }; });
     const mine = rows.filter(r => r.o && (spr ? r.o.spray : (r.o.irr || r.o.f.some(x => x.n && parseFloat(x.q)))));
-    rows.forEach(r => { if (!r.o) return; if (r.o.spray) sprayN.add(r.o.spray); r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fertN.add(x.n); }); });
+    rows.forEach(r => { if (!r.o) return; sprayEach(r.o).forEach(s => sprayN.add(s.n)); r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fertN.add(x.n); }); });
     if (!mine.length) return;
     const body = mine.map(r => { const o = r.o, t = iso(r.d) === todayIso;
       const cell = spr ? `<span class="tg sp">${esc(sprayTxt(o))}</span>`
@@ -397,7 +405,7 @@ function viewHome(v){
     const has = rows.filter(r => r.o && hasWork(r.o));
     if (!has.length) { none.push(c); return; }
     const irr = has.filter(r => r.o.irr).length, fe = new Set(), sp = new Set();
-    has.forEach(r => { r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fe.add(x.n); }); if (r.o.spray) sp.add(r.o.spray); });
+    has.forEach(r => { r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fe.add(x.n); }); sprayEach(r.o).forEach(s => sp.add(s.n)); });
     nFert += fe.size; nSpray += sp.size;
     const body = has.map(r => {
       const o = r.o, d = r.d, e = !o || isEmpty(o), t = iso(d) === todayIso;
@@ -420,7 +428,7 @@ function viewHome(v){
     const fs = o.f.filter(x => x.n && parseFloat(x.q));
     if (!fs.length && !o.spray) return;
     fs.forEach(x => ftot.set(x.n, (ftot.get(x.n) || 0) + x.q * c.area));
-    const t = sprayTot(o); if (t) { const k = o.spray + '|' + o.su; stot2.set(k, (stot2.get(k) || 0) + t); }
+    sprayEach(o).forEach(s => { if (s.tot) { const k = s.n + '|' + s.u; stot2.set(k, (stot2.get(k) || 0) + s.tot); } });
     trows.push(`<tr><td class="dy">${esc(c.name)}<small>${c.area} فدان</small></td>
       <td>${fs.map(x => `<div><span class="tg fe">${esc(x.n)} <b>${fmt3(x.q * c.area)}</b> كجم <span class="mut">(${fmt(x.q)}/فدان)</span></span></div>`).join('') || '<span class="mut">—</span>'}</td>
       <td>${o.spray ? `<span class="tg sp">${esc(sprayTxt(o))}</span>` : '<span class="mut">—</span>'}</td></tr>`);
@@ -470,6 +478,12 @@ function dayCard(i, o, open){
   const shown = Math.max(1, filled + 1);
   const today = key === iso(new Date());
   const fr = o.f.map((x, j) => `<div class="fr ${j >= shown ? 'hid' : ''}">${sel('fert', x.n, 'fn')}<input data-k="fq" type="number" inputmode="decimal" step="any" placeholder="كجم/فدان" value="${esc(x.q)}"></div>`).join('');
+  const se = sprayEach(o), sshown = Math.max(1, se.length);
+  const sr = Array.from({ length: SPN }, (_, j) => { const s = se[j] || { n: '', q: '', u: 'مل', k: '' };
+    return `<div class="sr ${j >= sshown ? 'hid' : ''}"><div>${sel('spray', s.n, 'spray')}</div>
+      <div class="row3"><div><label>الكمية / أتومايزر</label><input data-k="sq" type="number" inputmode="decimal" step="any" value="${esc(s.q || '')}"></div>
+        <div><label>الوحدة</label><select data-k="su">${SU.map(u => `<option ${u === s.u ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
+        <div><label>عدد الأتومايزرات</label><input data-k="tk" type="number" inputmode="decimal" step="any" value="${esc(s.k || (s.q && s.n ? 1 : ''))}"></div></div></div>`; }).join('');
   return `<details class="day ${today ? 'today' : ''} ${isEmpty(o) ? '' : 'has'}" data-i="${i}" data-iso="${key}" ${open ? 'open' : ''}>
     <summary><span class="dn">${dayName(d)} ${dm(d)}${today ? ' (النهارده)' : ''}</span><span class="dsum">${esc(summaryOf(o))}</span></summary>
     <div class="body">
@@ -481,11 +495,9 @@ function dayCard(i, o, open){
       <div class="sub">التسميد (كمية لكل فدان)</div>
       ${fr}
       <button class="link" data-act="morefert">+ سماد آخر (لحد 6)</button>
-      <div class="sub">الرش (الفلاية ${tank()} لتر)</div>
-      <div>${sel('spray', o.spray, 'spray')}</div>
-      <div class="row3"><div><label>الكمية / فلاية</label><input data-k="sq" type="number" inputmode="decimal" step="any" value="${esc(o.sq)}"></div>
-        <div><label>الوحدة</label><select data-k="su">${SU.map(u => `<option ${u === o.su ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
-        <div><label>عدد الفلايات</label><input data-k="tk" type="number" inputmode="decimal" step="any" value="${esc(o.tk)}"></div></div>
+      <div class="sub">الرش (الأتومايزر ${tank()} لتر)</div>
+      ${sr}
+      <button class="link" data-act="moresp">+ رش آخر (لحد ${SPN})</button>
       <div><label>المعاملات الميكانيكية</label><input data-k="mech" value="${esc(o.mech)}"></div>
       <div><label>ملاحظات</label><textarea data-k="notes">${esc(o.notes)}</textarea></div>
       <div class="row2"><button class="btn sec sm" data-act="copyprev">نسخ من اليوم السابق</button><button class="btn warn sm" data-act="clearday">مسح اليوم</button></div>
@@ -504,7 +516,15 @@ function viewProgram(v){
 }
 function readDay(card){
   const g = k => { const e = card.querySelector('[data-k="' + k + '"]'); return e ? e.value : ''; };
-  const o = { stage: g('stage'), irr: g('irr'), freq: g('freq'), spray: g('spray'), sq: g('sq'), su: g('su') || 'مل', tk: g('tk'), mech: g('mech'), notes: g('notes'), f: [] };
+  const o = { stage: g('stage'), irr: g('irr'), freq: g('freq'), spray: '', sq: '', su: 'مل', tk: '', mech: g('mech'), notes: g('notes'), f: [], bad: '' };
+  const sl = [];
+  $$('.sr', card).forEach(r => { const v = k => { const e = r.querySelector('[data-k="' + k + '"]'); return e ? e.value : ''; };
+    const n = v('spray'), q = v('sq'), t = v('tk');
+    if (!n) { if (String(q).trim() !== '') o.bad = 'name'; return; }
+    if (String(q).trim() !== '' && String(t).trim() === '') o.bad = 'tk';
+    sl.push([n, q, v('su') || 'مل', t]); });
+  if (sl.length) { o.spray = sl.map(x => x[0]).join(' | '); o.sq = sl.map(x => x[1]).join(' | '); o.su = sl.map(x => x[2]).join(' | '); o.tk = sl.map(x => x[3]).join(' | ');
+    if (sl.length === 1) { o.sq = sl[0][1]; o.su = sl[0][2]; o.tk = sl[0][3]; } }
   $$('.fr', card).forEach(r => { const n = r.querySelector('[data-k="fn"]'); if (n) o.f.push({ n: n.value, q: r.querySelector('[data-k="fq"]').value }); });
   return o;
 }
@@ -515,7 +535,8 @@ async function saveWeek(){
   for (const c of cards) {
     const o = readDay(c); dates.push(c.dataset.iso);
     if (o.f.some(x => String(x.q).trim() !== '' && !x.n)) { c.open = true; toast('اختار اسم السماد للكمية المكتوبة'); return; }
-    if (o.spray && String(o.sq).trim() !== '' && String(o.tk).trim() === '') { c.open = true; toast('اكتب عدد الفلايات للرش'); return; }
+    if (o.bad === 'name') { c.open = true; toast('اختار صنف الرش للكمية المكتوبة'); return; }
+    if (o.bad === 'tk') { c.open = true; toast('اكتب عدد الأتومايزرات للرش'); return; }
     if (!isEmpty(o)) rows.push(objToRow(S.crop, c.dataset.iso, o));
   }
   try {
@@ -662,7 +683,7 @@ function viewOrder(v){
   </table></div></div>`).join('');
 
   const stot = new Map();
-  secs.forEach(s => s.rows.forEach(r => { if (!r.o) return; const t = sprayTot(r.o); if (!t) return; const k = r.o.spray + '|' + r.o.su; stot.set(k, (stot.get(k) || 0) + t); }));
+  secs.forEach(s => s.rows.forEach(r => { if (!r.o) return; sprayEach(r.o).forEach(s => { if (!s.tot) return; const k = s.n + '|' + s.u; stot.set(k, (stot.get(k) || 0) + s.tot); }); }));
   const sprayTotHtml = stot.size ? `<div class="card"><h3>إجمالي المبيدات المطلوبة للأسبوع</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th class="ann">الإجمالي</th></tr>
     ${[...stot.entries()].map(([k, x]) => { const [n, u] = k.split('|'); return `<tr><td>${esc(n)}</td><td class="ann">${fmt3(x)} ${u}</td></tr>`; }).join('')}</table></div></div>` : '';
   const totHtml = tot.size ? `<div class="card"><h3>إجمالي الأسمدة المطلوبة للأسبوع (كجم)</h3><div class="tw"><table class="t"><tr><th>السماد</th><th class="ann">الإجمالي</th><th>التفصيل بالمحصول</th></tr>
@@ -714,8 +735,7 @@ function linesFor(crop, area, objs){
   objs.forEach(o => {
     if (!o) return;
     o.f.forEach(x => { const q = parseFloat(x.q); if (!x.n || !q) return; const it = itemOf(x.n); put(x.n, it ? it.unit : 'كجم', q * area); });
-    const t = sprayTot(o);
-    if (t) { const [bu, dv] = FAM[o.su] || ['لتر', 1000]; put(o.spray, bu, t / dv); }
+    sprayEach(o).forEach(s => { if (!s.tot) return; const [bu, dv] = FAM[s.u] || ['لتر', 1000]; put(s.n, bu, s.tot / dv); });
   });
   return [...m.values()].map(l => ({ ...l, qty: Math.round(l.qty * 1000) / 1000 })).filter(l => l.qty > 0);
 }
@@ -897,6 +917,7 @@ view.addEventListener('click', async e => {
     case 'wnext': setWeek(S.week + 1); break;
     case 'save': saveWeek(); break;
     case 'copyweek': openCopy(); break;
+    case 'moresp': { const h = $('.sr.hid', card); if (h) h.classList.remove('hid'); else toast('وصلت للحد الأقصى ' + SPN); break; }
     case 'morefert': { const h = $('.fr.hid', card); if (h) h.classList.remove('hid'); else toast('وصلت للحد الأقصى 6'); break; }
     case 'clearday': { if (!confirm('تمسح بيانات اليوم ده؟')) break; const open = card.open; card.outerHTML = dayCard(+card.dataset.i, blank(), open); markDirty(); break; }
     case 'copyprev': {
