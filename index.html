@@ -941,7 +941,11 @@ view.addEventListener('click', async e => {
   }
 });
 
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+if ('serviceWorker' in navigator) {
+  const had = !!navigator.serviceWorker.controller; let rl = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !rl && !(S && S.dirty)) { rl = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
+}
 boot();
 </script>
 </body>

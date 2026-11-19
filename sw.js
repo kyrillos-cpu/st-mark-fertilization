@@ -1,5 +1,5 @@
 // Service worker: الأب بيفتح فورًا من الكاش (شكل الأب)، وبيتحدّث في الخلفية. البيانات (الشيت) متتلمسش هنا.
-const CACHE = 'sanmark-v5';
+const CACHE = 'sanmark-v6';
 const SHELL = ['./', 'index.html', 'icon-192.png', 'icon-512.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {
@@ -13,7 +13,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   e.respondWith(caches.open(CACHE).then(async c => {
     const hit = await c.match(req, { ignoreSearch: true });
-    const net = fetch(req).then(res => { if (res.ok) c.put(req, res.clone()); return res; }).catch(() => hit);
+    const net = fetch(req, { cache: 'no-cache' }).then(res => { if (res.ok) c.put(req, res.clone()); return res; }).catch(() => hit);
     return hit || net;
   }));
 });
