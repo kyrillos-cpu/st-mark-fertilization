@@ -438,22 +438,22 @@ function viewHome(v){
 }
 
 /* ================= شاشة البرنامج ================= */
+let _bal, _balFor;
+function getBal(){ if (!_bal || _balFor !== S.store) { _bal = balances(); _balFor = S.store; } return _bal; }
 function sel(kind, val, key){
-  // أصناف المخزن بتظهر في الاختيار (حتى لو رصيدها صفر) جنب قائمة الأسماء
-  const items = (kind === 'fert' || kind === 'spray') ? (S.store.items || []).filter(i => {
-    const t = String(i.type || '');
-    return kind === 'fert' ? !/مبيد|رش|فطر|حشر/.test(t) : !/سماد|أسمدة/.test(t);
-  }) : [];
-  const inStore = new Set(items.map(i => i.name));
-  const L = S.lists[kind].filter(x => !inStore.has(x));
-  if (val && !L.includes(val) && !inStore.has(val)) L.push(val);
-  const B = items.length ? balances() : new Map();
-  const so = items.map(i => {
-    const b = B.get(i.name), q = b ? b.bal : 0;
-    return `<option value="${esc(i.name)}" ${i.name === val ? 'selected' : ''}>📦 ${esc(i.name)} — ${q > 0 ? 'متاح ' + fmt3(q) + ' ' + esc(i.unit || '') : 'رصيد 0'}</option>`;
-  }).join('');
-  const lo = L.map(x => `<option value="${esc(x)}" ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('');
-  return `<select data-kind="${kind}" data-k="${key}"><option value="">— اختر —</option>${so ? `<optgroup label="📦 من المخزن">${so}</optgroup>` : ''}${lo ? (so ? `<optgroup label="أسماء تانية">${lo}</optgroup>` : lo) : ''}<option value="__new__">＋ إضافة اسم جديد…</option></select>`;
+  const NEW = '<option value="__new__">＋ إضافة اسم جديد…</option>';
+  // التسميد والرش: الاختيار من أصناف المخزن (مع الرصيد)، ولو المخزن لسه فاضي بنرجع للقوايم
+  if ((kind === 'fert' || kind === 'spray') && S.store.items.length) {
+    const B = getBal(), items = S.store.items.slice().sort((x, y) => x.name.localeCompare(y.name, 'ar'));
+    const known = new Set(items.map(i => i.name));
+    const opt = i => { const b = B.get(i.name), bal = b ? b.bal : 0;
+      return `<option value="${esc(i.name)}" ${i.name === val ? 'selected' : ''}>${esc(i.name)} — ${bal > 0 ? 'الرصيد ' + fmt3(bal) + ' ' + i.unit : '⚠ نفد'}</option>`; };
+    const extra = val && !known.has(val) ? `<option value="${esc(val)}" selected>${esc(val)} — مش في المخزن</option>` : '';
+    return `<select data-kind="${kind}" data-k="${key}"><option value="">— اختر من المخزن —</option>${extra}${items.map(opt).join('')}${NEW}</select>`;
+  }
+  const L = S.lists[kind].slice();
+  if (val && !L.includes(val)) L.push(val);
+  return `<select data-kind="${kind}" data-k="${key}"><option value="">— اختر —</option>${L.map(x => `<option ${x === val ? 'selected' : ''}>${esc(x)}</option>`).join('')}${NEW}</select>`;
 }
 function summaryOf(o){
   const p = [];
