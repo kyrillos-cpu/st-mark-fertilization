@@ -104,6 +104,7 @@ table.wo td:first-child{white-space:nowrap}
 .tg.ir{background:#e3f2fd;color:#0d47a1}.tg.fe{background:#e8f5e9;color:#1b5e20}.tg.sp{background:#fff3e0;color:#a24a00}.tg.me{background:#f3e5f5;color:#6a1b9a}
 .hnone{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px dashed var(--bd);border-radius:12px;padding:10px 12px;margin:8px 0;color:var(--mut)}
 .userrow{display:grid;grid-template-columns:104px 1fr 1fr auto;gap:6px;margin-bottom:6px}
+.alsost{grid-column:1/-1;font-size:12.5px;color:var(--mut);display:flex;gap:6px;align-items:center;margin-top:-2px}
 .itemrow{display:grid;grid-template-columns:1fr 1fr 80px 80px auto;gap:6px;margin-bottom:6px}
 .subtabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px}
 .subtabs button{flex:0 0 auto;border:1px solid var(--bd);background:#fff;border-radius:20px;padding:8px 14px;font:inherit;font-size:14px;color:var(--mut)}
@@ -143,7 +144,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 9</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 10</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -177,6 +178,7 @@ let API = store.get('api') || API_DEFAULT, CODE = store.get('code') || '', PHONE
 const isStore = () => S.role === 'store';
 const isEng = () => S.role === 'engineer';
 const isWorker = () => S.role === 'sprayer' || S.role === 'fertilizer';
+const isKeeper = () => S.role === 'store' || (isWorker() && !!S.canStore);
 const ROLE_NAME = { store: 'مسئول مخزن', engineer: 'مهندس', sprayer: 'مسئول رش', fertilizer: 'مسئول تسميد' };
 const cred = () => CODE ? 'code=' + encodeURIComponent(CODE) : 'phone=' + encodeURIComponent(PHONE);
 const S = { crops: [], lists: { fert: [], stage: [], spray: [] }, settings: {}, program: new Map(), orders: {},
@@ -254,7 +256,7 @@ function sprayEach(o){
   return out;
 }
 function sprayTxt(o){
-  return sprayEach(o).map(s => !s.q ? s.n : s.n + ' ' + s.q + ' ' + s.u + '/أتومايزر' + (s.k ? ' × ' + s.k + ' أتومايزر = ' + fmt3(s.q * s.k) + ' ' + s.u : '')).join(' + ');
+  return sprayEach(o).map(s => s.tot ? s.n + ' ' + fmt3(s.tot) + ' ' + s.u : s.n).join(' + ');
 }
 const fmt3 = n => String(Math.round(Number(n) * 1000) / 1000);
 
@@ -262,17 +264,17 @@ const fmt3 = n => String(Math.round(Number(n) * 1000) / 1000);
 const CKEY = 'sm_cache_v1';
 const idKey = () => (CODE ? 'c:' + CODE : 'p:' + PHONE) + '@' + API;
 async function fetchData(){
-  if (CODE) { const j = await api('getAll'); return { id: idKey(), role: 'admin', who: '', all: j }; }
-  try { const j = await api('getAll'); return { id: idKey(), role: j.role, who: j.name, all: j }; }
-  catch (e) { const w = await api('whoami'); if (w.role !== 'store') throw e; const j = await api('getStore'); return { id: idKey(), role: 'store', who: w.name, store: j.store }; }
+  if (CODE) { const j = await api('getAll'); return { id: idKey(), role: 'admin', who: '', canStore: true, all: j }; }
+  try { const j = await api('getAll'); return { id: idKey(), role: j.role, who: j.name, canStore: !!j.canStore, all: j }; }
+  catch (e) { const w = await api('whoami'); if (w.role !== 'store') throw e; const j = await api('getStore'); return { id: idKey(), role: 'store', who: w.name, canStore: true, store: j.store }; }
 }
 function applyData(d){
-  S.role = d.role; S.who = d.who || '';
+  S.role = d.role; S.who = d.who || ''; S.canStore = d.role === 'store' || !!d.canStore;
   if (d.store) { S.store = d.store; S.tab = 'store'; return; }
   const j = d.all;
   S.store = j.store || S.store; S.users = j.users || [];
   if (isEng() && ['store', 'settings'].includes(S.tab)) S.tab = 'home';
-  if (isWorker()) S.tab = 'work';
+  if (isWorker() || isStore()) { if (!['work', 'store'].includes(S.tab) || (S.tab === 'store' && !S.canStore)) S.tab = isStore() ? 'store' : 'work'; }
   S.crops = j.crops; S.lists = j.lists; S.settings = j.settings; S.orders = j.orders;
   S.program = new Map();
   j.program.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
@@ -328,7 +330,7 @@ function startApp(){
   $('#login').style.display = 'none'; $('#app').style.display = 'block';
   S.week = curWeek();
   $('#hout').style.display = S.role !== 'admin' ? '' : 'none';
-  if (!isStore() && S.tab === 'store' && !S.keepStore) S.tab = 'home';
+  if (!isKeeper() && S.tab === 'store' && !S.keepStore) S.tab = 'home';
   renderNav(); render();
 }
 $('#hout').onclick = () => { if (confirm('تخرج؟')) { store.del('phone'); PHONE = ''; try { localStorage.removeItem(CKEY); } catch (e) {} showLogin(); } };
@@ -340,8 +342,10 @@ $('#reload').onclick = async () => {
 /* ================= التنقل ================= */
 const TABS = [['home', 'الرئيسية'], ['program', 'البرنامج'], ['totals', 'الإجماليات'], ['store', 'المخزن'], ['settings', 'الإعدادات']];
 function renderNav(){
-  $('#nav').style.display = (isStore() || isWorker()) ? 'none' : 'flex';
-  $('#nav').innerHTML = TABS.filter(t => !isEng() || !['store', 'settings'].includes(t[0])).map(([k, n]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${n}</button>`).join('');
+  const lim = isStore() || isWorker();
+  $('#nav').style.display = (lim && !S.canStore) ? 'none' : 'flex';
+  const list = lim ? (isStore() ? [['store', 'المخزن'], ['work', 'الجدول']] : [['work', 'الجدول'], ['store', 'المخزن']]) : TABS.filter(t => !isEng() || !['store', 'settings'].includes(t[0]));
+  $('#nav').innerHTML = list.map(([k, n]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${n}</button>`).join('');
 }
 $('#nav').addEventListener('click', e => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
@@ -395,7 +399,7 @@ function pdfHtml(D){
   const tbl = D.secs.map(s => `<div class="cr"><h2>${esc(s.c.name)} <small>— ${s.c.area} فدان</small></h2><table>
     <tr><th>اليوم</th><th>المرحلة</th><th>الري</th><th>التسميد</th><th>الرش</th><th>ميكانيكي / ملاحظات</th></tr>
     ${s.rows.map(r => { const o = r.o; return `<tr><td class="n">${dayName(r.d)}<br>${dm(r.d)}</td><td>${esc(o.stage)}</td><td>${esc(irrTxt(o))}</td>
-      <td>${fertTxt(o, s.c.area).map(esc).join('<br>')}</td><td>${sprayEach(o).map(x => esc(sprayTxt({ spray: x.n, sq: x.q, su: x.u, tk: x.k }))).join('<br>')}</td>
+      <td>${fertTxt(o, s.c.area).map(esc).join('<br>')}</td><td>${sprayEach(o).map(x => esc(x.tot ? x.n + ' ' + fmt3(x.tot) + ' ' + x.u : x.n)).join('<br>')}</td>
       <td>${esc(o.mech)}${o.mech && o.notes ? '<br>' : ''}${esc(o.notes)}</td></tr>`; }).join('')}</table></div>`).join('');
   const ftb = D.ft.size ? `<div class="cr"><h2>إجمالي الأسمدة المطلوبة (كجم)</h2><table><tr><th>السماد</th><th>الإجمالي</th><th>التفصيل بالمحصول</th></tr>
     ${[...D.ft.entries()].map(([n, t]) => `<tr><td>${esc(n)}</td><td class="n"><b>${fmt3(t.total)}</b></td><td>${Object.entries(t.by).map(([c, x]) => esc(c) + ': ' + fmt3(x)).join(' · ')}</td></tr>`).join('')}</table></div>` : '';
@@ -445,32 +449,27 @@ const expBar = () => `<div class="row2 noprint" style="margin:6px 0"><button cla
 
 /* ================= شغل مسئول الرش / التسميد (عرض بس) ================= */
 function viewWork(v){
-  const spr = S.role === 'sprayer', w = S.week, ws = weekStart(w), todayIso = iso(new Date());
-  const sprayN = new Set(), fertN = new Set(), cards = [];
-  S.crops.forEach(c => {
-    const rows = Array.from({ length: 7 }, (_, i) => { const d = addDays(ws, i); return { d, o: S.program.get(c.name + '|' + iso(d)) }; });
-    const mine = rows.filter(r => r.o && (spr ? r.o.spray : (r.o.irr || r.o.f.some(x => x.n && parseFloat(x.q)))));
-    rows.forEach(r => { if (!r.o) return; sprayEach(r.o).forEach(s => sprayN.add(s.n)); r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fertN.add(x.n); }); });
-    if (!mine.length) return;
-    const body = mine.map(r => { const o = r.o, t = iso(r.d) === todayIso;
-      const cell = spr ? `<span class="tg sp">${esc(sprayTxt(o))}</span>`
-        : (o.irr ? `<div><span class="tg ir">ري ${esc(o.irr)} د × ${esc(o.freq || 1)}</span></div>` : '') + o.f.filter(x => x.n && parseFloat(x.q)).map(x => `<div><span class="tg fe">${esc(x.n)} <b>${fmt(x.q)}</b> كجم/فدان <span class="mut">(= ${fmt(x.q * c.area)} كجم)</span></span></div>`).join('');
-      return `<tr class="${t ? 'td' : ''}"><td class="dy">${dayName(r.d)}<small>${dm(r.d)}${t ? ' · النهارده' : ''}</small></td><td>${cell}${o.notes ? '<div class="mut">' + esc(o.notes) + '</div>' : ''}</td></tr>`; }).join('');
-    cards.push(`<div class="hc"><div class="hh"><div><b>${esc(c.name)}</b> <span class="mut">— ${c.area} فدان</span></div></div>
-      <div class="tw" style="border:0;border-radius:0;max-height:none"><table style="min-width:0"><tr><th>اليوم</th><th>${spr ? 'الرش' : 'الري والتسميد'}</th></tr>${body}</table></div></div>`);
-  });
+  const P = homeParts(false), w = P.w, ws = P.ws, spr = S.role === 'sprayer', fer = S.role === 'fertilizer';
+  const sprayN = new Set(), fertN = new Set();
+  S.crops.forEach(c => { for (let i = 0; i < 7; i++) { const o = S.program.get(c.name + '|' + iso(addDays(ws, i))); if (!o) continue;
+    sprayEach(o).forEach(s => sprayN.add(s.n)); o.f.forEach(x => { if (x.n && parseFloat(x.q)) fertN.add(x.n); }); } });
   const mineSet = spr ? sprayN : fertN;
-  const reqs = S.store.requests.filter(r => r.week === w && mineSet.has(r.item));
-  const reqHtml = reqs.length ? `<div class="card"><h3>الكميات اللي هتستلمها من المخزن</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th>المحصول</th><th>المطلوب</th><th>حالة الصرف</th></tr>
+  let reqHtml = '';
+  if (spr || fer) {
+    const reqs = S.store.requests.filter(r => r.week === w && mineSet.has(r.item));
+    reqHtml = reqs.length ? `<div class="card"><h3>الكميات اللي هتستلمها من المخزن</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th>المحصول</th><th>المطلوب</th><th>حالة الصرف</th></tr>
     ${reqs.map(r => `<tr><td>${esc(r.item)}</td><td>${esc(r.crop)}</td><td>${fmt3(r.need)} ${esc(r.unit)}</td><td>${r.status === 'done' ? '<span class="okc">اتصرف ' + fmt3(r.issued) + ' ' + esc(r.unit) + '</span>' : '<span class="mut">لسه</span>'}</td></tr>`).join('')}</table></div></div>`
-    : `<div class="card mut">${'مفيش كميات للأسبوع ده.'}</div>`;
-  v.innerHTML = `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— ${ROLE_NAME[S.role]} (عرض فقط)</span></div>${weekNav()}
-    <div class="hero"><h2>${spr ? 'برنامج الرش' : 'برنامج التسميد والري'} — أسبوع ${w}</h2><div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div></div>
-    ${reqHtml}${cards.join('') || '<div class="card">مفيش شغل مسجل ليك الأسبوع ده.</div>'}`;
+    : `<div class="card mut">مفيش كميات ليك من المخزن للأسبوع ده.</div>`;
+  }
+  v.innerHTML = `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— ${ROLE_NAME[S.role]}${isWorker() && S.canStore ? ' + مسئول مخزن' : ''} (الجدول للعرض فقط)</span></div>
+    ${P.todayCard}${weekNav()}${expBar()}
+    <div class="hero"><h2>برنامج أسبوع ${w}</h2><div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
+      <div class="st"><span>${P.cards.length} محصول عليه برنامج</span><span>${P.nFert} صنف تسميد</span><span>${P.nSpray} صنف رش</span></div></div>
+    ${reqHtml}${P.cards.join('') || '<div class="card">مفيش برنامج مسجل للأسبوع ده.</div>'}`;
 }
 
 /* ================= الرئيسية ================= */
-function viewHome(v){
+function homeParts(editable){
   const w = S.week, ws = weekStart(w), od = S.orders[w] || {}, todayIso = iso(new Date());
   const cards = [], none = [];
   let nFert = 0, nSpray = 0;
@@ -492,7 +491,7 @@ function viewHome(v){
       return `<tr class="${t ? 'td' : ''}">${head}<td>${esc(o.stage)}</td><td>${irrT}</td><td>${feT}</td><td>${spT}</td><td>${meT}${o.notes ? '<div class="mut">' + esc(o.notes) + '</div>' : ''}</td></tr>`;
     }).join('');
     cards.push(`<div class="hc"><div class="hh"><div><b>${esc(c.name)}</b> <span class="mut">${c.area ? '— ' + c.area + ' فدان' : ''}</span></div>
-      <button class="btn sec sm" data-act="editcrop" data-crop="${esc(c.name)}">تعديل</button></div>
+      ${editable ? `<button class="btn sec sm" data-act="editcrop" data-crop="${esc(c.name)}">تعديل</button>` : ''}</div>
       <div class="tw" style="border:0;border-radius:0;max-height:none"><table><tr><th>اليوم</th><th>المرحلة</th><th>الري</th><th>التسميد (كجم/فدان)</th><th>الرش</th><th>ميكانيكي / ملاحظات</th></tr>${body}</table></div></div>`);
   });
   // ===== تشغيل اليوم =====
@@ -511,6 +510,10 @@ function viewHome(v){
     ${trows.length ? `<div class="tw" style="border:0;border-radius:0;max-height:none"><table style="min-width:0"><tr><th>المحصول</th><th>التسميد (كجم فعلي)</th><th>الرش</th></tr>${trows.join('')}</table></div>
     <div style="padding:8px 12px;background:#fffdf3;font-size:13px"><b>الإجمالي:</b> ${[...ftot.entries()].map(([n, x]) => esc(n) + ' ' + fmt3(x) + ' كجم').concat([...stot2.entries()].map(([k, x]) => { const [n, u] = k.split('|'); return esc(n) + ' ' + fmt3(x) + ' ' + u; })).join(' · ') || '—'}</div>`
     : '<div style="padding:12px" class="mut">مفيش تسميد أو رش النهارده في أي محصول.</div>'}</div>`;
+  return { w, ws, todayCard, cards, none, nFert, nSpray };
+}
+function viewHome(v){
+  const { w, ws, todayCard, cards, none, nFert, nSpray } = homeParts(true);
   v.innerHTML = `${todayCard}${weekNav()}${expBar()}
     <div class="hero"><h2>برنامج أسبوع ${w}</h2>
       <div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
@@ -877,7 +880,7 @@ const itemOpts = (sel) => `<option value="">— اختر الصنف —</option>
 const unitOf = n => (itemOf(n) || {}).unit || '';
 
 function viewStore(v){
-  const keeper = isStore();
+  const keeper = isKeeper();
   const tabs = `<div class="subtabs">${SUBS.map(([k, n]) => `<button data-act="sub" data-sub="${k}" class="${S.sub === k ? 'on' : ''}">${n}${k === 'req' ? ' (' + S.store.requests.filter(r => r.status !== 'done' && r.week <= curWeek() + 1).length + ')' : ''}</button>`).join('')}</div>`;
   const hello = keeper ? `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— مسئول المخزن</span></div>` : '';
   let body = '';
@@ -914,7 +917,7 @@ function viewStore(v){
       <label style="margin-top:8px">ملاحظة</label><input id="xNote"><button class="btn" style="margin-top:8px;width:100%" data-act="manualissue">تسجيل الصرف</button></div>
       <div class="card"><h3>آخر المنصرف</h3>${L.length ? `<div class="tw"><table class="t"><tr><th>التاريخ</th><th>الصنف</th><th>الكمية</th><th>إلى</th><th>النوع</th><th></th></tr>${L.map(r => `<tr><td>${esc(r.date)}</td><td>${esc(r.item)}</td><td>${fmt3(r.qty)} ${unitOf(r.item)}</td><td>${esc(r.to)}</td><td>${r.lineId ? 'أمر تشغيل أ' + esc(r.week) : 'يدوي'}</td><td>${r.lineId ? '' : `<button class="link" data-act="delissue" data-id="${esc(r.id)}">حذف</button>`}</td></tr>`).join('')}</table></div>` : '<p class="mut">لسه مفيش.</p>'}</div>`;
   } else {
-    const adm = !isStore();
+    const adm = !isKeeper();
     body = `<div class="card"><h3>أصناف المخزن</h3><p class="mut">الوحدة كجم أو لتر. الرصيد الافتتاحي = اللي في المخزن النهارده قبل أول وارد.</p><div id="itemRows">
       ${S.store.items.map(i => itemRow(i)).join('')}</div>
       <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="additem">+ صنف</button><button class="btn" data-act="saveitems">حفظ الأصناف</button></div>
@@ -991,13 +994,13 @@ function viewSettings(v){
       <label style="margin-top:8px">أنواع الرش</label><textarea id="lsSpray" rows="5">${esc(S.lists.spray.join('\n'))}</textarea>
       <button class="btn" style="margin-top:8px" data-act="savelists">حفظ القوائم</button></div>
     <div class="card"><h3>المستخدمين بالموبايل</h3><p class="mut">كل واحد بيدخل برقم موبايله (شاشة الدخول ← دخول بالموبايل). المهندس بيسجل البرنامج (وطلبات الصرف بتتبعت للمخزن أول ما يحفظ)، ومسئول المخزن بيشوف المخزن بس، ومسئول الرش والتسميد بيشوفوا شغلهم والكميات اللي هيستلموها (عرض فقط).</p><div id="userRows">
-      ${S.users.map(u => userRow(u.name, u.phone, u.role)).join('')}</div>
+      ${S.users.map(u => userRow(u.name, u.phone, u.role, u.alsoStore)).join('')}</div>
       <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="adduser">+ مسئول</button><button class="btn" data-act="saveusers">حفظ</button></div></div>
     <div class="card"><h3>الحساب</h3><p class="mut" dir="ltr" style="text-align:left;word-break:break-all">${esc(API)}</p>
       <button class="btn warn" data-act="logout">تغيير الرابط / الكود</button></div>`;
 }
 const cropRow = (name, area, old) => `<div class="croprow" data-old="${esc(old)}"><input class="cn" value="${esc(name)}" placeholder="اسم المحصول"><input class="ca" type="number" inputmode="decimal" step="any" value="${esc(area)}" placeholder="فدان"><button class="btn warn sm" data-act="delcrop">حذف</button></div>`;
-const userRow = (name, phone, role) => `<div class="userrow"><select class="ur"><option value="store" ${role !== 'engineer' ? 'selected' : ''}>مسئول مخزن</option><option value="engineer" ${role === 'engineer' ? 'selected' : ''}>مهندس</option><option value="sprayer" ${role === 'sprayer' ? 'selected' : ''}>مسئول رش</option><option value="fertilizer" ${role === 'fertilizer' ? 'selected' : ''}>مسئول تسميد</option></select><input class="un" value="${esc(name)}" placeholder="الاسم"><input class="up" dir="ltr" type="tel" inputmode="tel" value="${esc(phone)}" placeholder="رقم الموبايل"><button class="btn warn sm" data-act="deluser">حذف</button></div>`;
+const userRow = (name, phone, role, also) => `<div class="userrow"><select class="ur"><option value="store" ${(!role || role === 'store') ? 'selected' : ''}>مسئول مخزن</option><option value="engineer" ${role === 'engineer' ? 'selected' : ''}>مهندس</option><option value="sprayer" ${role === 'sprayer' ? 'selected' : ''}>مسئول رش</option><option value="fertilizer" ${role === 'fertilizer' ? 'selected' : ''}>مسئول تسميد</option></select><input class="un" value="${esc(name)}" placeholder="الاسم"><input class="up" dir="ltr" type="tel" inputmode="tel" value="${esc(phone)}" placeholder="رقم الموبايل"><button class="btn warn sm" data-act="deluser">حذف</button><label class="alsost"><input type="checkbox" class="us" ${also ? 'checked' : ''}> مخزن أيضًا (لمسئول الرش / التسميد)</label></div>`;
 const linesOf = id => [...new Set($('#' + id).value.split('\n').map(x => x.trim()).filter(Boolean))];
 
 /* ================= الأحداث ================= */
@@ -1059,7 +1062,7 @@ view.addEventListener('click', async e => {
     case 'adduser': $('#userRows').insertAdjacentHTML('beforeend', userRow('', '', 'store')); break;
     case 'deluser': b.closest('.userrow').remove(); break;
     case 'saveusers': {
-      const users = $$('.userrow').map(r => ({ name: $('.un', r).value.trim(), phone: $('.up', r).value.trim(), role: $('.ur', r).value })).filter(u => u.name || u.phone);
+      const users = $$('.userrow').map(r => ({ name: $('.un', r).value.trim(), phone: $('.up', r).value.trim(), role: $('.ur', r).value, alsoStore: $('.us', r).checked })).filter(u => u.name || u.phone);
       if (users.some(u => !u.name || D2(u.phone).replace(/\D/g, '').length < 10)) { toast('اكتب اسم ورقم موبايل صحيح لكل واحد'); break; }
       try { await api('saveUsers', { users }); S.users = users; toast('اتحفظ'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
