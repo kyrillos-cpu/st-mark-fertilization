@@ -55,6 +55,8 @@ details.day.has>summary{background:var(--g2);border-radius:10px}
 .pkl{position:absolute;right:0;left:0;top:100%;z-index:40;background:#fff;border:1px solid var(--bd);border-radius:10px;max-height:240px;overflow:auto;box-shadow:0 6px 18px rgba(0,0,0,.18);margin-top:2px}
 .pko{display:flex;justify-content:space-between;gap:8px;padding:11px 12px;border-bottom:1px solid #eee;cursor:pointer}
 .pko small{color:var(--mut);white-space:nowrap}.pkn{color:#1b5e20;font-weight:700}
+.asg summary{cursor:pointer}.arow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.arow>b{grid-column:1/-1}
+.sh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 12px;background:#f3f7f3;border-top:1px solid var(--bd);font-size:13px}.sh span{color:var(--mut)}
 .sr{border-top:1px dashed var(--bd);padding-top:6px;margin-top:6px}
 .savebar{position:fixed;right:0;left:0;bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:8px;z-index:15;justify-content:center}
 .savebar .btn{flex:1;max-width:260px}
@@ -144,7 +146,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 12</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 13</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -177,12 +179,13 @@ const store = {
 let API = store.get('api') || API_DEFAULT, CODE = store.get('code') || '', PHONE = store.get('phone') || '';
 const isStore = () => S.role === 'store';
 const isEng = () => S.role === 'engineer';
-const isWorker = () => S.role === 'sprayer' || S.role === 'fertilizer';
+const isWorker = () => S.role === 'viewer';
 const isKeeper = () => S.role !== 'admin' && !!S.canStore;
 const hasRole = r => (S.roles || [S.role]).includes(r);
-const ROLE_NAME = { store: 'مسئول مخزن', engineer: 'مهندس', sprayer: 'مسئول رش', fertilizer: 'مسئول تسميد' };
+const asg = (crop, w) => S.assign[crop + '|' + w] || {};
+const ROLE_NAME = { store: 'مسئول مخزن', engineer: 'مهندس', viewer: 'عضو فريق' };
 const cred = () => CODE ? 'code=' + encodeURIComponent(CODE) : 'phone=' + encodeURIComponent(PHONE);
-const S = { crops: [], lists: { fert: [], stage: [], spray: [] }, settings: {}, program: new Map(), orders: {},
+const S = { team: [], assign: {}, crops: [], lists: { fert: [], stage: [], spray: [] }, settings: {}, program: new Map(), orders: {},
             tab: 'home', crop: '', week: 1, dirty: false, tCrop: '*', tMode: 'feddan',
             store: { items: [], receipts: [], issues: [], requests: [] }, users: [], sub: 'req', role: 'admin', who: '' };
 
@@ -270,13 +273,14 @@ async function fetchData(){
   catch (e) { const w = await api('whoami'); if (w.role !== 'store') throw e; const j = await api('getStore'); return { id: idKey(), role: 'store', who: w.name, canStore: true, store: j.store }; }
 }
 function applyData(d){
-  S.role = d.role; S.roles = d.roles || [d.role]; S.who = d.who || ''; S.canStore = d.role === 'store' || !!d.canStore;
+  S.role = ['admin', 'engineer', 'store'].includes(d.role) ? d.role : 'viewer'; S.roles = (d.roles || [d.role]).filter(r => ['engineer', 'store'].includes(r)); S.who = d.who || ''; S.canStore = d.role === 'store' || !!d.canStore;
   if (d.store) { S.store = d.store; S.tab = 'store'; return; }
   const j = d.all;
   S.store = j.store || S.store; S.users = j.users || [];
   if (isEng() && (S.tab === 'settings' || (S.tab === 'store' && !S.canStore))) S.tab = 'home';
   if (isWorker() || isStore()) { if (!['work', 'store'].includes(S.tab) || (S.tab === 'store' && !S.canStore)) S.tab = isStore() ? 'store' : 'work'; }
   S.crops = j.crops; S.lists = j.lists; S.settings = j.settings; S.orders = j.orders;
+  S.team = j.team || []; S.assign = {}; (j.assign || []).forEach(r => { S.assign[r[0] + '|' + r[1]] = { fert: r[2], fertStore: r[3], spray: r[4], sprayStore: r[5], mech: r[6] }; });
   S.program = new Map();
   j.program.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
   if (!S.crops.find(c => c.name === S.crop)) S.crop = (S.crops[0] || {}).name || '';
@@ -330,18 +334,18 @@ async function boot(){
 function startApp(){
   $('#login').style.display = 'none'; $('#app').style.display = 'block';
   S.week = curWeek();
-  $('#hout').style.display = S.role !== 'admin' ? '' : 'none';
+  $('#hout').style.display = '';
   if (!isKeeper() && S.tab === 'store' && !S.keepStore) S.tab = 'home';
   renderNav(); render();
 }
-$('#hout').onclick = () => { if (confirm('تخرج؟')) { store.del('phone'); PHONE = ''; try { localStorage.removeItem(CKEY); } catch (e) {} showLogin(); } };
+$('#hout').onclick = () => { if (confirm('تخرج؟')) { store.del('phone'); store.del('code'); PHONE = ''; CODE = ''; try { localStorage.removeItem(CKEY); } catch (e) {} showLogin(); } };
 $('#reload').onclick = async () => {
   if (S.dirty && !confirm('فيه تعديلات متحفظتش. تحديث هيمسحها؟')) return;
   try { await load(); S.dirty = false; render(); toast('اتحدّث'); } catch (e) { toast(e.message); }
 };
 
 /* ================= التنقل ================= */
-const TABS = [['home', 'الرئيسية'], ['program', 'البرنامج'], ['totals', 'الإجماليات'], ['store', 'المخزن'], ['settings', 'الإعدادات']];
+const TABS = [['home', 'الرئيسية'], ['program', 'البرنامج'], ['totals', 'الإجماليات'], ['store', 'المخزن'], ['settings', 'فريق العمل']];
 function renderNav(){
   const lim = isStore() || isWorker();
   $('#nav').style.display = (lim && !S.canStore) ? 'none' : 'flex';
@@ -385,7 +389,7 @@ function weekData(w){
   S.crops.forEach(c => {
     const rows = Array.from({ length: 7 }, (_, i) => { const d = addDays(ws, i); return { d, o: S.program.get(c.name + '|' + iso(d)) }; }).filter(r => r.o && hasWork(r.o));
     if (!rows.length) return;
-    secs.push({ c, rows });
+    secs.push({ c, rows, a: asg(c.name, w) });
     rows.forEach(r => {
       r.o.f.forEach(x => { const q = parseFloat(x.q); if (!x.n || !q) return; let t = ft.get(x.n); if (!t) { t = { total: 0, by: {} }; ft.set(x.n, t); } t.total += q * c.area; t.by[c.name] = (t.by[c.name] || 0) + q * c.area; });
       sprayEach(r.o).forEach(s => { if (!s.tot) return; const k = s.n + '|' + s.u; st.set(k, (st.get(k) || 0) + s.tot); });
@@ -395,9 +399,11 @@ function weekData(w){
 }
 const fertTxt = (o, area) => o.f.filter(x => x.n && parseFloat(x.q)).map(x => `${x.n} ${fmt(x.q)} كجم/فدان (= ${fmt3(x.q * area)} كجم)`);
 const irrTxt = o => o.irr ? `${o.irr} د × ${o.freq || 1}` : '';
+const asgLine = a => { const p = [['التسميد', a.fert, a.fertStore], ['الرش', a.spray, a.sprayStore], ['الميكانيكي', a.mech, '']].filter(x => x[1] || x[2]).map(x => x[0] + ': ' + [x[1] ? 'المسئول ' + x[1] : '', x[2] ? 'المخزن ' + x[2] : ''].filter(Boolean).join(' / '));
+  return p.length ? `<div style="margin:0 0 4px;color:#333">${esc(p.join('  |  '))}</div>` : ''; };
 function pdfHtml(D){
   const rng = `${dm(D.ws)} – ${dm(addDays(D.ws, 6))}`;
-  const tbl = D.secs.map(s => `<div class="cr"><h2>${esc(s.c.name)} <small>— ${s.c.area} فدان</small></h2><table>
+  const tbl = D.secs.map(s => `<div class="cr"><h2>${esc(s.c.name)} <small>— ${s.c.area} فدان</small></h2>${asgLine(s.a)}<table>
     <tr><th>اليوم</th><th>المرحلة</th><th>الري</th><th>التسميد</th><th>الرش</th><th>ميكانيكي / ملاحظات</th></tr>
     ${s.rows.map(r => { const o = r.o; return `<tr><td class="n">${dayName(r.d)}<br>${dm(r.d)}</td><td>${esc(o.stage)}</td><td>${esc(irrTxt(o))}</td>
       <td>${fertTxt(o, s.c.area).map(esc).join('<br>')}</td><td>${sprayEach(o).map(x => esc(x.tot ? x.n + ' ' + fmt3(x.tot) + ' ' + x.u : x.n)).join('<br>')}</td>
@@ -431,15 +437,15 @@ async function exportXlsx(){
   const D = weekData(S.week);
   if (!D.secs.length) { toast('مفيش برنامج مسجل للأسبوع ده'); return; }
   try { await loadXlsx(); } catch (e) { toast(e.message); return; }
-  const rows = [['المحصول', 'المساحة (فدان)', 'اليوم', 'التاريخ', 'المرحلة', 'الري (دقيقة × مرات)', 'التسميد (كجم/فدان)', 'التسميد (كجم فعلي)', 'الرش', 'ميكانيكي', 'ملاحظات']];
+  const rows = [['المحصول', 'المساحة (فدان)', 'اليوم', 'التاريخ', 'المرحلة', 'الري (دقيقة × مرات)', 'التسميد (كجم/فدان)', 'التسميد (كجم فعلي)', 'الرش', 'ميكانيكي', 'ملاحظات', 'مسئول التسميد', 'مخزن التسميد', 'مسئول الرش', 'مخزن الرش', 'مسئول الميكانيكي']];
   D.secs.forEach(s => s.rows.forEach(r => { const o = r.o, fs = o.f.filter(x => x.n && parseFloat(x.q));
-    rows.push([s.c.name, s.c.area, dayName(r.d), iso(r.d), o.stage || '', irrTxt(o), fs.map(x => `${x.n} ${fmt(x.q)}`).join(' ؛ '), fs.map(x => `${x.n} ${fmt3(x.q * s.c.area)}`).join(' ؛ '), sprayTxt(o), o.mech || '', o.notes || '']); }));
+    rows.push([s.c.name, s.c.area, dayName(r.d), iso(r.d), o.stage || '', irrTxt(o), fs.map(x => `${x.n} ${fmt(x.q)}`).join(' ؛ '), fs.map(x => `${x.n} ${fmt3(x.q * s.c.area)}`).join(' ؛ '), sprayTxt(o), o.mech || '', o.notes || '', s.a.fert || '', s.a.fertStore || '', s.a.spray || '', s.a.sprayStore || '', s.a.mech || '']); }));
   const fr = [['السماد', 'الإجمالي (كجم)', 'التفصيل بالمحصول']];
   D.ft.forEach((t, n) => fr.push([n, Math.round(t.total * 1000) / 1000, Object.entries(t.by).map(([c, x]) => c + ': ' + fmt3(x)).join(' ؛ ')]));
   const sr = [['الصنف', 'الإجمالي', 'الوحدة']];
   D.st.forEach((x, k) => { const [n, u] = k.split('|'); sr.push([n, Math.round(x * 1000) / 1000, u]); });
   const wb = XLSX.utils.book_new(), mk = (a, w) => { const sh = XLSX.utils.aoa_to_sheet(a); sh['!cols'] = w.map(x => ({ wch: x })); return sh; };
-  XLSX.utils.book_append_sheet(wb, mk(rows, [14, 10, 10, 12, 16, 16, 44, 44, 52, 22, 26]), 'البرنامج');
+  XLSX.utils.book_append_sheet(wb, mk(rows, [14, 10, 10, 12, 16, 16, 44, 44, 52, 22, 26, 16, 16, 16, 16, 16]), 'البرنامج');
   if (fr.length > 1) XLSX.utils.book_append_sheet(wb, mk(fr, [24, 14, 50]), 'إجمالي الأسمدة');
   if (sr.length > 1) XLSX.utils.book_append_sheet(wb, mk(sr, [26, 14, 8]), 'إجمالي المبيدات');
   wb.Workbook = { Views: [{ RTL: true }] };
@@ -450,19 +456,19 @@ const expBar = () => `<div class="row2 noprint" style="margin:6px 0"><button cla
 
 /* ================= شغل مسئول الرش / التسميد (عرض بس) ================= */
 function viewWork(v){
-  const P = homeParts(false), w = P.w, ws = P.ws, spr = hasRole('sprayer'), fer = hasRole('fertilizer');
-  const sprayN = new Set(), fertN = new Set();
-  S.crops.forEach(c => { for (let i = 0; i < 7; i++) { const o = S.program.get(c.name + '|' + iso(addDays(ws, i))); if (!o) continue;
-    sprayEach(o).forEach(s => sprayN.add(s.n)); o.f.forEach(x => { if (x.n && parseFloat(x.q)) fertN.add(x.n); }); } });
-  const mineSet = new Set([...(spr ? sprayN : []), ...(fer ? fertN : [])]);
-  let reqHtml = '';
-  if (spr || fer) {
-    const reqs = S.store.requests.filter(r => r.week === w && mineSet.has(r.item));
-    reqHtml = reqs.length ? `<div class="card"><h3>الكميات اللي هتستلمها من المخزن</h3><div class="tw"><table class="t"><tr><th>الصنف</th><th>المحصول</th><th>المطلوب</th><th>حالة الصرف</th></tr>
-    ${reqs.map(r => `<tr><td>${esc(r.item)}</td><td>${esc(r.crop)}</td><td>${fmt3(r.need)} ${esc(r.unit)}</td><td>${r.status === 'done' ? '<span class="okc">اتصرف ' + fmt3(r.issued) + ' ' + esc(r.unit) + '</span>' : '<span class="mut">لسه</span>'}</td></tr>`).join('')}</table></div></div>`
-    : `<div class="card mut">مفيش كميات ليك من المخزن للأسبوع ده.</div>`;
-  }
-  v.innerHTML = `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— ${(S.roles || [S.role]).map(r => ROLE_NAME[r]).join(' + ')} (الجدول للعرض فقط)</span></div>
+  const P = homeParts(false), w = P.w, ws = P.ws, me = S.who;
+  const mine = new Set(); let myTxt = [];
+  S.crops.forEach(c => { const a = asg(c.name, w), fi = new Set(), si = new Set();
+    for (let i = 0; i < 7; i++) { const o = S.program.get(c.name + '|' + iso(addDays(ws, i))); if (!o) continue; o.f.forEach(x => { if (x.n && parseFloat(x.q)) fi.add(x.n); }); sprayEach(o).forEach(s => si.add(s.n)); }
+    const f = me && (a.fert === me || a.fertStore === me), s = me && (a.spray === me || a.sprayStore === me), m = me && a.mech === me;
+    if (f) { fi.forEach(n => mine.add(c.name + '|' + n)); myTxt.push(c.name + ': تسميد'); }
+    if (s) { si.forEach(n => mine.add(c.name + '|' + n)); myTxt.push(c.name + ': رش'); }
+    if (m) myTxt.push(c.name + ': ميكانيكي'); });
+  const reqs = S.store.requests.filter(r => r.week === w && mine.has(r.crop + '|' + r.item));
+  const reqHtml = myTxt.length ? `<div class="card"><h3>مسئولياتك الأسبوع ده</h3><div>${myTxt.map(t => `<span class="chip s1" style="margin:2px">${esc(t)}</span>`).join('')}</div>
+    ${reqs.length ? `<div class="tw" style="margin-top:8px"><table class="t"><tr><th>الصنف</th><th>المحصول</th><th>المطلوب</th><th>حالة الصرف</th></tr>
+    ${reqs.map(r => `<tr><td>${esc(r.item)}</td><td>${esc(r.crop)}</td><td>${fmt3(r.need)} ${esc(r.unit)}</td><td>${r.status === 'done' ? '<span class="okc">اتصرف ' + fmt3(r.issued) + ' ' + esc(r.unit) + '</span>' : '<span class="mut">لسه</span>'}</td></tr>`).join('')}</table></div>` : ''}</div>` : '';
+  v.innerHTML = `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— ${ROLE_NAME[S.role]} (الجدول للعرض فقط)</span></div>
     ${P.todayCard}${weekNav()}${expBar()}
     <div class="hero"><h2>برنامج أسبوع ${w}</h2><div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
       <div class="st"><span>${P.cards.length} محصول عليه برنامج</span><span>${P.nFert} صنف تسميد</span><span>${P.nSpray} صنف رش</span></div></div>
@@ -481,19 +487,20 @@ function homeParts(editable){
     const irr = has.filter(r => r.o.irr).length, fe = new Set(), sp = new Set();
     has.forEach(r => { r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fe.add(x.n); }); sprayEach(r.o).forEach(s => sp.add(s.n)); });
     nFert += fe.size; nSpray += sp.size;
-    const body = has.map(r => {
-      const o = r.o, d = r.d, e = !o || isEmpty(o), t = iso(d) === todayIso;
-      const head = `<td class="dy">${dayName(d)}<small>${dm(d)}${t ? ' · النهارده' : ''}</small></td>`;
-      if (e) return `<tr class="em ${t ? 'td' : ''}">${head}<td colspan="5">—</td></tr>`;
-      const irrT = o.irr ? `<span class="tg ir">${esc(o.irr)} د × ${esc(o.freq || 1)}</span>` : '';
-      const feT = o.f.filter(x => x.n && parseFloat(x.q)).map(x => `<div><span class="tg fe">${esc(x.n)} <b>${fmt(x.q)}</b></span></div>`).join('');
-      const spT = o.spray ? `<span class="tg sp">${esc(sprayTxt(o))}</span>` : '';
-      const meT = o.mech ? `<span class="tg me">${esc(o.mech)}</span>` : '';
-      return `<tr class="${t ? 'td' : ''}">${head}<td>${esc(o.stage)}</td><td>${irrT}</td><td>${feT}</td><td>${spT}</td><td>${meT}${o.notes ? '<div class="mut">' + esc(o.notes) + '</div>' : ''}</td></tr>`;
-    }).join('');
+    const a = asg(c.name, w), me = n => esc(n) + (n === S.who ? ' <b style="color:#1b5e20">(أنت)</b>' : '');
+    const who = (r, st) => [r ? 'المسئول: <b>' + me(r) + '</b>' : '', st ? 'المخزن: <b>' + me(st) + '</b>' : ''].filter(Boolean).join(' · ');
+    const tr = (d, cells) => `<tr class="${iso(d) === todayIso ? 'td' : ''}"><td class="dy">${dayName(d)}<small>${dm(d)}${iso(d) === todayIso ? ' · النهارده' : ''}</small></td>${cells}</tr>`;
+    const sec = (title, whoH, head, rowsH) => rowsH ? `<div class="sh"><b>${title}</b><span>${whoH}</span></div>
+      <div class="tw" style="border:0;border-radius:0;max-height:none"><table style="min-width:0"><tr><th>اليوم</th>${head}</tr>${rowsH}</table></div>` : '';
+    const fRows = has.filter(r => r.o.irr || r.o.f.some(x => x.n && parseFloat(x.q))).map(r => { const o = r.o;
+      return tr(r.d, `<td>${esc(o.stage)}</td><td>${o.irr ? `<span class="tg ir">${esc(o.irr)} د × ${esc(o.freq || 1)}</span>` : ''}</td><td>${o.f.filter(x => x.n && parseFloat(x.q)).map(x => `<div><span class="tg fe">${esc(x.n)} <b>${fmt(x.q)}</b></span></div>`).join('')}</td>`); }).join('');
+    const sRows = has.filter(r => sprayEach(r.o).length).map(r => tr(r.d, `<td>${sprayEach(r.o).map(s => `<div><span class="tg sp">${esc(s.tot ? s.n + ' ' + fmt3(s.tot) + ' ' + s.u : s.n)}</span></div>`).join('')}</td>`)).join('');
+    const mRows = has.filter(r => r.o.mech).map(r => tr(r.d, `<td><span class="tg me">${esc(r.o.mech)}</span>${r.o.notes ? '<div class="mut">' + esc(r.o.notes) + '</div>' : ''}</td>`)).join('');
     cards.push(`<div class="hc"><div class="hh"><div><b>${esc(c.name)}</b> <span class="mut">${c.area ? '— ' + c.area + ' فدان' : ''}</span></div>
       ${editable ? `<button class="btn sec sm" data-act="editcrop" data-crop="${esc(c.name)}">تعديل</button>` : ''}</div>
-      <div class="tw" style="border:0;border-radius:0;max-height:none"><table><tr><th>اليوم</th><th>المرحلة</th><th>الري</th><th>التسميد (كجم/فدان)</th><th>الرش</th><th>ميكانيكي / ملاحظات</th></tr>${body}</table></div></div>`);
+      ${sec('💧 الري والتسميد (كجم/فدان)', who(a.fert, a.fertStore), '<th>المرحلة</th><th>الري</th><th>التسميد</th>', fRows)}
+      ${sec('🧴 رش الأسبوع', who(a.spray, a.sprayStore), '<th>الرش (الإجمالي)</th>', sRows)}
+      ${sec('🚜 المعاملات الميكانيكية', who(a.mech, ''), '<th>المعاملة / ملاحظات</th>', mRows)}</div>`);
   });
   // ===== تشغيل اليوم =====
   const tNow = new Date(), trows = [], ftot = new Map(), stot2 = new Map();
@@ -611,14 +618,38 @@ function dayCard(i, o, open){
       <div class="row2"><button class="btn sec sm" data-act="copyprev">نسخ من اليوم السابق</button><button class="btn warn sm" data-act="clearday">مسح اليوم</button></div>
     </div></details>`;
 }
+const isAdmin = () => S.role === 'admin';
+const teamOpts = (val, storeOnly) => {
+  let t = S.team.slice(); if (storeOnly) { const s = t.filter(m => (m.roles || []).includes('store')); if (s.length) t = s; }
+  const names = t.map(m => m.name); if (val && !names.includes(val)) names.push(val);
+  return `<option value="">— بدون —</option>` + names.map(n => `<option ${n === val ? 'selected' : ''}>${esc(n)}</option>`).join('');
+};
+function asgCard(){
+  const a = asg(S.crop, S.week), row = (title, k, ks) => `<div class="arow"><b>${title}</b>
+    <div><label>المسئول</label><select data-as="${k}">${teamOpts(a[k])}</select></div>
+    ${ks ? `<div><label>مسئول المخزن</label><select data-as="${ks}">${teamOpts(a[ks], true)}</select></div>` : '<div></div>'}</div>`;
+  return `<details class="card asg" id="asgCard" ${(a.fert || a.spray || a.mech || a.fertStore || a.sprayStore) ? 'open' : ''}><summary><b>👤 المسئولين عن الأسبوع</b> <span class="mut">(اختياري)</span></summary>
+    ${row('تسميد الأسبوع', 'fert', 'fertStore')}${row('رش الأسبوع', 'spray', 'sprayStore')}${row('المعاملات الميكانيكية', 'mech', '')}</details>`;
+}
+function readAsg(){
+  const o = {}; $$('#asgCard [data-as]').forEach(s => { o[s.dataset.as] = s.value; }); return o;
+}
+function cropsEditor(){
+  return `<details class="card" id="cropsEd"><summary><b>⚙ المحاصيل والمساحات</b> <span class="mut">(إضافة / تعديل / حذف)</span></summary>
+    <div id="cropRows" style="margin-top:8px">${S.crops.map(c => cropRow(c.name, c.area, c.name)).join('')}</div>
+    <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="addcrop">+ محصول</button><button class="btn" data-act="savecrops">حفظ المحاصيل</button></div>
+    <p class="mut">لو غيّرت اسم محصول، بياناته القديمة بتتنقل للاسم الجديد.</p></details>`;
+}
 function viewProgram(v){
-  if (!S.crops.length) { v.innerHTML = '<div class="card">ضيف محصول من الإعدادات الأول.</div>'; return; }
+  if (!S.crops.length) { v.innerHTML = isAdmin() ? cropsEditor().replace('<details class="card" id="cropsEd">', '<details class="card" id="cropsEd" open>') : '<div class="card">مفيش محاصيل لسه.</div>'; return; }
   const todayIso = iso(new Date());
   const inWeek = Array.from({ length: 7 }, (_, i) => iso(addDays(weekStart(S.week), i))).includes(todayIso);
   v.innerHTML = `
-    <div class="bar"><div><label>المحصول</label><select id="cropSel">${S.crops.map(c => `<option ${c.name === S.crop ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div></div>
+    <div class="bar"><div><label>المحصول</label><select id="cropSel">${S.crops.map(c => `<option ${c.name === S.crop ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}${isAdmin() ? '<option value="__newcrop__">＋ إضافة محصول جديد…</option>' : ''}</select></div></div>
     ${weekNav()}${expBar()}
+    ${asgCard()}
     <div id="days">${Array.from({ length: 7 }, (_, i) => dayCard(i, null, inWeek ? iso(addDays(weekStart(S.week), i)) === todayIso : i === 0)).join('')}</div>
+    ${isAdmin() ? cropsEditor() : ''}
     <div class="savebar" id="sbar"><button class="btn" data-act="save">حفظ الأسبوع</button><button class="btn sec" data-act="copyweek">نسخ الأسبوع…</button></div>`;
   S.dirty = false;
 }
@@ -650,7 +681,9 @@ async function saveWeek(){
   try {
     const area = (S.crops.find(c => c.name === S.crop) || {}).area || 0;
     const lines = linesFor(S.crop, area, rows.map(r => rowToObj(r)));
-    await api('saveDays', { crop: S.crop, week: S.week, lines, dates, rows });
+    const assign = readAsg();
+    await api('saveDays', { crop: S.crop, week: S.week, lines, dates, rows, assign });
+    S.assign[S.crop + '|' + S.week] = assign;
     dates.forEach(d => S.program.delete(S.crop + '|' + d));
     rows.forEach(r => { const o = rowToObj(r); S.program.set(o.crop + '|' + o.date, o); });
     S.dirty = false; const b = $('#sbar'); if (b) b.classList.remove('dirty');
@@ -980,34 +1013,22 @@ async function storeAct(act, b){
 
 /* ================= الإعدادات ================= */
 function viewSettings(v){
-  v.innerHTML = `
-    <div class="card"><h3>بداية البرنامج</h3>
-      <label>تاريخ أول يوم في الأسبوع 1</label>
-      <input type="date" id="sStart" value="${esc(S.settings.startDate || '2026-11-01')}">
-      <button class="btn" style="margin-top:8px" data-act="savestart">حفظ التاريخ</button></div>
-    <div class="card"><h3>المحاصيل والمساحات</h3><div id="cropRows">
-      ${S.crops.map(c => cropRow(c.name, c.area, c.name)).join('')}</div>
-      <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="addcrop">+ محصول</button><button class="btn" data-act="savecrops">حفظ المحاصيل</button></div>
-      <p class="mut">لو غيّرت اسم محصول، بياناته القديمة بتتنقل للاسم الجديد.</p></div>
-    <div class="card"><h3>مراحل النمو</h3><p class="mut">اسم في كل سطر. الأسمدة والمبيدات بتتاخد من المخزن.</p>
-      <label>مراحل النمو</label><textarea id="lsStage" rows="5">${esc(S.lists.stage.join('\n'))}</textarea>
-      <button class="btn" style="margin-top:8px" data-act="savelists">حفظ القوائم</button></div>
-    <div class="card"><h3>المستخدمين بالموبايل</h3><p class="mut">كل واحد بيدخل برقم موبايله (شاشة الدخول ← دخول بالموبايل). المهندس بيسجل البرنامج (وطلبات الصرف بتتبعت للمخزن أول ما يحفظ)، ومسئول المخزن بيشوف المخزن بس، ومسئول الرش والتسميد بيشوفوا شغلهم والكميات اللي هيستلموها (عرض فقط).</p><div id="userRows">
-      ${S.users.map(u => userRow(u.name, u.phone, u.roles || [u.role])).join('')}</div>
-      <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="adduser">+ مسئول</button><button class="btn" data-act="saveusers">حفظ</button></div></div>
-    <div class="card"><h3>الحساب</h3><p class="mut" dir="ltr" style="text-align:left;word-break:break-all">${esc(API)}</p>
-      <button class="btn warn" data-act="logout">تغيير الرابط / الكود</button></div>`;
+  v.innerHTML = `<div class="card"><h3>فريق العمل</h3>
+      <p class="mut">اكتب الاسم ورقم الموبايل (بيدخل بيه التطبيق). علّم <b>مهندس</b> (بيسجل البرنامج) أو <b>مسئول مخزن</b> لو محتاج. أي حد من غير تحديد بيشوف البرنامج كله بدون تعديل. أسماء الفريق بتظهر في اختيار المسئول عن التسميد والرش والميكانيكي.</p>
+      <div id="userRows">${S.users.map(u => userRow(u.name, u.phone, u.roles || [u.role])).join('')}</div>
+      <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="adduser">+ عضو</button><button class="btn" data-act="saveusers">حفظ</button></div></div>`;
 }
 const cropRow = (name, area, old) => `<div class="croprow" data-old="${esc(old)}"><input class="cn" value="${esc(name)}" placeholder="اسم المحصول"><input class="ca" type="number" inputmode="decimal" step="any" value="${esc(area)}" placeholder="فدان"><button class="btn warn sm" data-act="delcrop">حذف</button></div>`;
-const ROLE_OPTS = [['engineer', 'مهندس'], ['sprayer', 'مسئول رش'], ['fertilizer', 'مسئول تسميد'], ['store', 'مسئول مخزن']];
+const ROLE_OPTS = [['engineer', 'مهندس'], ['store', 'مسئول مخزن']];
 const userRow = (name, phone, roles) => `<div class="userrow"><input class="un" value="${esc(name)}" placeholder="الاسم"><input class="up" dir="ltr" type="tel" inputmode="tel" value="${esc(phone)}" placeholder="رقم الموبايل"><button class="btn warn sm" data-act="deluser">حذف</button><div class="rolechk">${ROLE_OPTS.map(([k, n]) => `<label><input type="checkbox" class="rk" value="${k}" ${(roles || []).includes(k) ? 'checked' : ''}> ${n}</label>`).join('')}</div></div>`;
 const linesOf = id => [...new Set($('#' + id).value.split('\n').map(x => x.trim()).filter(Boolean))];
 
 /* ================= الأحداث ================= */
 const view = $('#view');
-view.addEventListener('input', e => { if (S.tab === 'program' && e.target.closest('#days')) markDirty(); });
+view.addEventListener('input', e => { if (S.tab === 'program' && e.target.closest('#days, #asgCard')) markDirty(); });
 view.addEventListener('change', e => {
   const t = e.target;
+  if (t.id === 'cropSel' && t.value === '__newcrop__') { t.value = S.crop; const ed = $('#cropsEd'); if (ed) { ed.open = true; $('#cropRows').insertAdjacentHTML('beforeend', cropRow('', '', '')); const l = $$('#cropRows .cn'); l[l.length - 1].focus(); ed.scrollIntoView({ block: 'center' }); } return; }
   if (t.id === 'cropSel') { if (S.dirty && !confirm('فيه تعديلات متحفظتش. تكمل من غير حفظ؟')) { t.value = S.crop; return; } S.crop = t.value; render(); return; }
   if (t.id === 'wsel') { setWeek(parseInt(t.value)); return; }
   if (t.id === 'tMode') { S.tMode = t.value; render(); return; }
@@ -1059,13 +1080,12 @@ view.addEventListener('click', async e => {
       S.lists = { fert: S.lists.fert, stage: linesOf('lsStage'), spray: S.lists.spray };
       try { await api('saveLists', S.lists); toast('اتحفظت القوائم'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
-    case 'adduser': $('#userRows').insertAdjacentHTML('beforeend', userRow('', '', ['store'])); break;
+    case 'adduser': $('#userRows').insertAdjacentHTML('beforeend', userRow('', '', [])); break;
     case 'deluser': b.closest('.userrow').remove(); break;
     case 'saveusers': {
       const users = $$('.userrow').map(r => ({ name: $('.un', r).value.trim(), phone: $('.up', r).value.trim(), roles: $$('.rk', r).filter(x => x.checked).map(x => x.value) })).filter(u => u.name || u.phone);
       if (users.some(u => !u.name || D2(u.phone).replace(/\D/g, '').length < 10)) { toast('اكتب اسم ورقم موبايل صحيح لكل واحد'); break; }
-      if (users.some(u => !u.roles.length)) { toast('علّم على مسئولية واحدة على الأقل لكل واحد'); break; }
-      try { await api('saveUsers', { users }); S.users = users; toast('اتحفظ'); } catch (x) { toast('فشل: ' + x.message); } break;
+      try { await api('saveUsers', { users }); S.users = users; S.team = users.map(u => ({ name: u.name, roles: u.roles })); toast('اتحفظ'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
     case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); store.del('phone'); try { localStorage.removeItem(CKEY); } catch (e) {} API = API_DEFAULT; CODE = ''; PHONE = ''; showLogin(); } break;
     default: storeAct(act, b);
