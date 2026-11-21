@@ -144,7 +144,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 10</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 11</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -988,10 +988,8 @@ function viewSettings(v){
       ${S.crops.map(c => cropRow(c.name, c.area, c.name)).join('')}</div>
       <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="addcrop">+ محصول</button><button class="btn" data-act="savecrops">حفظ المحاصيل</button></div>
       <p class="mut">لو غيّرت اسم محصول، بياناته القديمة بتتنقل للاسم الجديد.</p></div>
-    <div class="card"><h3>القوائم المنسدلة</h3><p class="mut">اسم في كل سطر.</p>
-      <label>الأسمدة</label><textarea id="lsFert" rows="6">${esc(S.lists.fert.join('\n'))}</textarea>
-      <label style="margin-top:8px">مراحل النمو</label><textarea id="lsStage" rows="5">${esc(S.lists.stage.join('\n'))}</textarea>
-      <label style="margin-top:8px">أنواع الرش</label><textarea id="lsSpray" rows="5">${esc(S.lists.spray.join('\n'))}</textarea>
+    <div class="card"><h3>مراحل النمو</h3><p class="mut">اسم في كل سطر. الأسمدة والمبيدات بتتاخد من المخزن.</p>
+      <label>مراحل النمو</label><textarea id="lsStage" rows="5">${esc(S.lists.stage.join('\n'))}</textarea>
       <button class="btn" style="margin-top:8px" data-act="savelists">حفظ القوائم</button></div>
     <div class="card"><h3>المستخدمين بالموبايل</h3><p class="mut">كل واحد بيدخل برقم موبايله (شاشة الدخول ← دخول بالموبايل). المهندس بيسجل البرنامج (وطلبات الصرف بتتبعت للمخزن أول ما يحفظ)، ومسئول المخزن بيشوف المخزن بس، ومسئول الرش والتسميد بيشوفوا شغلهم والكميات اللي هيستلموها (عرض فقط).</p><div id="userRows">
       ${S.users.map(u => userRow(u.name, u.phone, u.role, u.alsoStore)).join('')}</div>
@@ -1056,7 +1054,7 @@ view.addEventListener('click', async e => {
       } catch (x) { toast('فشل: ' + x.message); } break;
     }
     case 'savelists': {
-      S.lists = { fert: linesOf('lsFert'), stage: linesOf('lsStage'), spray: linesOf('lsSpray') };
+      S.lists = { fert: S.lists.fert, stage: linesOf('lsStage'), spray: S.lists.spray };
       try { await api('saveLists', S.lists); toast('اتحفظت القوائم'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
     case 'adduser': $('#userRows').insertAdjacentHTML('beforeend', userRow('', '', 'store')); break;
