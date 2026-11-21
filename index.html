@@ -55,7 +55,7 @@ details.day.has>summary{background:var(--g2);border-radius:10px}
 .pkl{position:absolute;right:0;left:0;top:100%;z-index:40;background:#fff;border:1px solid var(--bd);border-radius:10px;max-height:240px;overflow:auto;box-shadow:0 6px 18px rgba(0,0,0,.18);margin-top:2px}
 .pko{display:flex;justify-content:space-between;gap:8px;padding:11px 12px;border-bottom:1px solid #eee;cursor:pointer}
 .pko small{color:var(--mut);white-space:nowrap}.pkn{color:#1b5e20;font-weight:700}
-.asg summary{cursor:pointer}.arow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.arow>b{grid-column:1/-1}
+.asg summary{cursor:pointer}.arow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.arow>b{grid-column:1/-1}.pkbox{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.pk2{display:inline-flex;align-items:center;gap:4px;background:#f1f5f1;border:1px solid #cfd8cf;border-radius:16px;padding:4px 10px;font-size:.9em}.pk2 input{width:auto;margin:0}
 .sh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 12px;background:#f3f7f3;border-top:1px solid var(--bd);font-size:13px}.sh span{color:var(--mut)}
 .sr{border-top:1px dashed var(--bd);padding-top:6px;margin-top:6px}
 .savebar{position:fixed;right:0;left:0;bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:8px;z-index:15;justify-content:center}
@@ -146,7 +146,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 13</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 14</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -182,6 +182,8 @@ const isEng = () => S.role === 'engineer';
 const isWorker = () => S.role === 'viewer';
 const isKeeper = () => S.role !== 'admin' && !!S.canStore;
 const hasRole = r => (S.roles || [S.role]).includes(r);
+const nm = v => String(v || '').split('|').map(x => x.trim()).filter(Boolean);
+const has_ = (v, me) => !!me && nm(v).includes(me);
 const asg = (crop, w) => S.assign[crop + '|' + w] || {};
 const ROLE_NAME = { store: 'مسئول مخزن', engineer: 'مهندس', viewer: 'عضو فريق' };
 const cred = () => CODE ? 'code=' + encodeURIComponent(CODE) : 'phone=' + encodeURIComponent(PHONE);
@@ -399,7 +401,7 @@ function weekData(w){
 }
 const fertTxt = (o, area) => o.f.filter(x => x.n && parseFloat(x.q)).map(x => `${x.n} ${fmt(x.q)} كجم/فدان (= ${fmt3(x.q * area)} كجم)`);
 const irrTxt = o => o.irr ? `${o.irr} د × ${o.freq || 1}` : '';
-const asgLine = a => { const p = [['التسميد', a.fert, a.fertStore], ['الرش', a.spray, a.sprayStore], ['الميكانيكي', a.mech, '']].filter(x => x[1] || x[2]).map(x => x[0] + ': ' + [x[1] ? 'المسئول ' + x[1] : '', x[2] ? 'المخزن ' + x[2] : ''].filter(Boolean).join(' / '));
+const asgLine = a => { const p = [['التسميد', a.fert, a.fertStore], ['الرش', a.spray, a.sprayStore], ['الميكانيكي', a.mech, '']].filter(x => x[1] || x[2]).map(x => x[0] + ': ' + [x[1] ? 'المسئول ' + nm(x[1]).join('، ') : '', x[2] ? 'المخزن ' + nm(x[2]).join('، ') : ''].filter(Boolean).join(' / '));
   return p.length ? `<div style="margin:0 0 4px;color:#333">${esc(p.join('  |  '))}</div>` : ''; };
 function pdfHtml(D){
   const rng = `${dm(D.ws)} – ${dm(addDays(D.ws, 6))}`;
@@ -439,7 +441,7 @@ async function exportXlsx(){
   try { await loadXlsx(); } catch (e) { toast(e.message); return; }
   const rows = [['المحصول', 'المساحة (فدان)', 'اليوم', 'التاريخ', 'المرحلة', 'الري (دقيقة × مرات)', 'التسميد (كجم/فدان)', 'التسميد (كجم فعلي)', 'الرش', 'ميكانيكي', 'ملاحظات', 'مسئول التسميد', 'مخزن التسميد', 'مسئول الرش', 'مخزن الرش', 'مسئول الميكانيكي']];
   D.secs.forEach(s => s.rows.forEach(r => { const o = r.o, fs = o.f.filter(x => x.n && parseFloat(x.q));
-    rows.push([s.c.name, s.c.area, dayName(r.d), iso(r.d), o.stage || '', irrTxt(o), fs.map(x => `${x.n} ${fmt(x.q)}`).join(' ؛ '), fs.map(x => `${x.n} ${fmt3(x.q * s.c.area)}`).join(' ؛ '), sprayTxt(o), o.mech || '', o.notes || '', s.a.fert || '', s.a.fertStore || '', s.a.spray || '', s.a.sprayStore || '', s.a.mech || '']); }));
+    rows.push([s.c.name, s.c.area, dayName(r.d), iso(r.d), o.stage || '', irrTxt(o), fs.map(x => `${x.n} ${fmt(x.q)}`).join(' ؛ '), fs.map(x => `${x.n} ${fmt3(x.q * s.c.area)}`).join(' ؛ '), sprayTxt(o), o.mech || '', o.notes || '', nm(s.a.fert).join('، '), nm(s.a.fertStore).join('، '), nm(s.a.spray).join('، '), nm(s.a.sprayStore).join('، '), nm(s.a.mech).join('، ')]); }));
   const fr = [['السماد', 'الإجمالي (كجم)', 'التفصيل بالمحصول']];
   D.ft.forEach((t, n) => fr.push([n, Math.round(t.total * 1000) / 1000, Object.entries(t.by).map(([c, x]) => c + ': ' + fmt3(x)).join(' ؛ ')]));
   const sr = [['الصنف', 'الإجمالي', 'الوحدة']];
@@ -460,7 +462,7 @@ function viewWork(v){
   const mine = new Set(); let myTxt = [];
   S.crops.forEach(c => { const a = asg(c.name, w), fi = new Set(), si = new Set();
     for (let i = 0; i < 7; i++) { const o = S.program.get(c.name + '|' + iso(addDays(ws, i))); if (!o) continue; o.f.forEach(x => { if (x.n && parseFloat(x.q)) fi.add(x.n); }); sprayEach(o).forEach(s => si.add(s.n)); }
-    const f = me && (a.fert === me || a.fertStore === me), s = me && (a.spray === me || a.sprayStore === me), m = me && a.mech === me;
+    const f = has_(a.fert, me) || has_(a.fertStore, me), s = has_(a.spray, me) || has_(a.sprayStore, me), m = has_(a.mech, me);
     if (f) { fi.forEach(n => mine.add(c.name + '|' + n)); myTxt.push(c.name + ': تسميد'); }
     if (s) { si.forEach(n => mine.add(c.name + '|' + n)); myTxt.push(c.name + ': رش'); }
     if (m) myTxt.push(c.name + ': ميكانيكي'); });
@@ -488,7 +490,7 @@ function homeParts(editable){
     has.forEach(r => { r.o.f.forEach(x => { if (x.n && parseFloat(x.q)) fe.add(x.n); }); sprayEach(r.o).forEach(s => sp.add(s.n)); });
     nFert += fe.size; nSpray += sp.size;
     const a = asg(c.name, w), me = n => esc(n) + (n === S.who ? ' <b style="color:#1b5e20">(أنت)</b>' : '');
-    const who = (r, st) => [r ? 'المسئول: <b>' + me(r) + '</b>' : '', st ? 'المخزن: <b>' + me(st) + '</b>' : ''].filter(Boolean).join(' · ');
+    const who = (r, st) => [nm(r).length ? 'المسئول: <b>' + nm(r).map(me).join('، ') + '</b>' : '', nm(st).length ? 'المخزن: <b>' + nm(st).map(me).join('، ') + '</b>' : ''].filter(Boolean).join(' · ');
     const tr = (d, cells) => `<tr class="${iso(d) === todayIso ? 'td' : ''}"><td class="dy">${dayName(d)}<small>${dm(d)}${iso(d) === todayIso ? ' · النهارده' : ''}</small></td>${cells}</tr>`;
     const sec = (title, whoH, head, rowsH) => rowsH ? `<div class="sh"><b>${title}</b><span>${whoH}</span></div>
       <div class="tw" style="border:0;border-radius:0;max-height:none"><table style="min-width:0"><tr><th>اليوم</th>${head}</tr>${rowsH}</table></div>` : '';
@@ -619,20 +621,20 @@ function dayCard(i, o, open){
     </div></details>`;
 }
 const isAdmin = () => S.role === 'admin';
-const teamOpts = (val, storeOnly) => {
-  let t = S.team.slice(); if (storeOnly) { const s = t.filter(m => (m.roles || []).includes('store')); if (s.length) t = s; }
-  const names = t.map(m => m.name); if (val && !names.includes(val)) names.push(val);
-  return `<option value="">— بدون —</option>` + names.map(n => `<option ${n === val ? 'selected' : ''}>${esc(n)}</option>`).join('');
+const teamOpts = (val, storeOnly, k) => {
+  let tm = S.team.slice(); if (storeOnly) { const s = tm.filter(m => (m.roles || []).includes('store')); if (s.length) tm = s; }
+  const cur = nm(val), names = tm.map(m => m.name); cur.forEach(n => { if (!names.includes(n)) names.push(n); });
+  return names.length ? names.map(n => `<label class="pk2"><input type="checkbox" value="${esc(n)}" ${cur.includes(n) ? 'checked' : ''}> ${esc(n)}</label>`).join('') : '<span class="mut">ضيف أسماء في «فريق العمل» الأول</span>';
 };
 function asgCard(){
   const a = asg(S.crop, S.week), row = (title, k, ks) => `<div class="arow"><b>${title}</b>
-    <div><label>المسئول</label><select data-as="${k}">${teamOpts(a[k])}</select></div>
-    ${ks ? `<div><label>مسئول المخزن</label><select data-as="${ks}">${teamOpts(a[ks], true)}</select></div>` : '<div></div>'}</div>`;
+    <div><label>المسئولين (اختار واحد أو أكتر)</label><div class="pkbox" data-as="${k}">${teamOpts(a[k])}</div></div>
+    ${ks ? `<div><label>مسئول المخزن</label><div class="pkbox" data-as="${ks}">${teamOpts(a[ks], true)}</div></div>` : '<div></div>'}</div>`;
   return `<details class="card asg" id="asgCard" ${(a.fert || a.spray || a.mech || a.fertStore || a.sprayStore) ? 'open' : ''}><summary><b>👤 المسئولين عن الأسبوع</b> <span class="mut">(اختياري)</span></summary>
     ${row('تسميد الأسبوع', 'fert', 'fertStore')}${row('رش الأسبوع', 'spray', 'sprayStore')}${row('المعاملات الميكانيكية', 'mech', '')}</details>`;
 }
 function readAsg(){
-  const o = {}; $$('#asgCard [data-as]').forEach(s => { o[s.dataset.as] = s.value; }); return o;
+  const o = {}; $$('#asgCard [data-as]').forEach(s => { o[s.dataset.as] = [...s.querySelectorAll('input:checked')].map(x => x.value).join(' | '); }); return o;
 }
 function cropsEditor(){
   return `<details class="card" id="cropsEd"><summary><b>⚙ المحاصيل والمساحات</b> <span class="mut">(إضافة / تعديل / حذف)</span></summary>
