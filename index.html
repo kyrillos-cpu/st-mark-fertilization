@@ -143,7 +143,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 8</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 9</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -373,6 +373,76 @@ function setWeek(w){
   S.dirty = false; S.week = w; render();
 }
 
+
+/* ================= تصدير البرنامج الأسبوعي (PDF / Excel) ================= */
+function weekData(w){
+  const ws = weekStart(w), secs = [], ft = new Map(), st = new Map();
+  S.crops.forEach(c => {
+    const rows = Array.from({ length: 7 }, (_, i) => { const d = addDays(ws, i); return { d, o: S.program.get(c.name + '|' + iso(d)) }; }).filter(r => r.o && hasWork(r.o));
+    if (!rows.length) return;
+    secs.push({ c, rows });
+    rows.forEach(r => {
+      r.o.f.forEach(x => { const q = parseFloat(x.q); if (!x.n || !q) return; let t = ft.get(x.n); if (!t) { t = { total: 0, by: {} }; ft.set(x.n, t); } t.total += q * c.area; t.by[c.name] = (t.by[c.name] || 0) + q * c.area; });
+      sprayEach(r.o).forEach(s => { if (!s.tot) return; const k = s.n + '|' + s.u; st.set(k, (st.get(k) || 0) + s.tot); });
+    });
+  });
+  return { w, ws, secs, ft, st };
+}
+const fertTxt = (o, area) => o.f.filter(x => x.n && parseFloat(x.q)).map(x => `${x.n} ${fmt(x.q)} كجم/فدان (= ${fmt3(x.q * area)} كجم)`);
+const irrTxt = o => o.irr ? `${o.irr} د × ${o.freq || 1}` : '';
+function pdfHtml(D){
+  const rng = `${dm(D.ws)} – ${dm(addDays(D.ws, 6))}`;
+  const tbl = D.secs.map(s => `<div class="cr"><h2>${esc(s.c.name)} <small>— ${s.c.area} فدان</small></h2><table>
+    <tr><th>اليوم</th><th>المرحلة</th><th>الري</th><th>التسميد</th><th>الرش</th><th>ميكانيكي / ملاحظات</th></tr>
+    ${s.rows.map(r => { const o = r.o; return `<tr><td class="n">${dayName(r.d)}<br>${dm(r.d)}</td><td>${esc(o.stage)}</td><td>${esc(irrTxt(o))}</td>
+      <td>${fertTxt(o, s.c.area).map(esc).join('<br>')}</td><td>${sprayEach(o).map(x => esc(sprayTxt({ spray: x.n, sq: x.q, su: x.u, tk: x.k }))).join('<br>')}</td>
+      <td>${esc(o.mech)}${o.mech && o.notes ? '<br>' : ''}${esc(o.notes)}</td></tr>`; }).join('')}</table></div>`).join('');
+  const ftb = D.ft.size ? `<div class="cr"><h2>إجمالي الأسمدة المطلوبة (كجم)</h2><table><tr><th>السماد</th><th>الإجمالي</th><th>التفصيل بالمحصول</th></tr>
+    ${[...D.ft.entries()].map(([n, t]) => `<tr><td>${esc(n)}</td><td class="n"><b>${fmt3(t.total)}</b></td><td>${Object.entries(t.by).map(([c, x]) => esc(c) + ': ' + fmt3(x)).join(' · ')}</td></tr>`).join('')}</table></div>` : '';
+  const stb = D.st.size ? `<div class="cr"><h2>إجمالي المبيدات المطلوبة</h2><table><tr><th>الصنف</th><th>الإجمالي</th></tr>
+    ${[...D.st.entries()].map(([k, x]) => { const [n, u] = k.split('|'); return `<tr><td>${esc(n)}</td><td class="n"><b>${fmt3(x)} ${u}</b></td></tr>`; }).join('')}</table></div>` : '';
+  return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>برنامج أسبوع ${D.w}</title><style>
+    @page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Tahoma,Arial,sans-serif;font-size:12px;color:#111;margin:0}
+    h1{font-size:18px;margin:0 0 2px}.sub{color:#555;margin-bottom:10px}h2{font-size:14px;margin:0 0 4px;background:#e8f5e9;padding:4px 8px;border-radius:4px}h2 small{font-weight:400;color:#555}
+    .cr{margin:0 0 12px;page-break-inside:avoid}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:4px 6px;text-align:right;vertical-align:top}
+    th{background:#f1f1f1}td.n{white-space:nowrap}</style></head><body>
+    <h1>تسميد ورش سان مارك — برنامج أسبوع ${D.w}</h1><div class="sub">من ${dayName(D.ws)} ${dm(D.ws)} إلى ${dayName(addDays(D.ws, 6))} ${dm(addDays(D.ws, 6))}</div>
+    ${tbl}${ftb}${stb}</body></html>`;
+}
+function exportPdf(){
+  const D = weekData(S.week);
+  if (!D.secs.length) { toast('مفيش برنامج مسجل للأسبوع ده'); return; }
+  const old = document.getElementById('pdfFrame'); if (old) old.remove();
+  const f = document.createElement('iframe'); f.id = 'pdfFrame'; f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  f.onload = () => setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { toast('الطباعة مش متاحة هنا'); } }, 300);
+  document.body.appendChild(f); f.srcdoc = pdfHtml(D);
+  toast('اختار "حفظ كـ PDF" من شاشة الطباعة');
+}
+function loadXlsx(){
+  return window.XLSX ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = res; s.onerror = () => rej(new Error('محتاج نت لتصدير Excel')); document.head.appendChild(s); });
+}
+async function exportXlsx(){
+  const D = weekData(S.week);
+  if (!D.secs.length) { toast('مفيش برنامج مسجل للأسبوع ده'); return; }
+  try { await loadXlsx(); } catch (e) { toast(e.message); return; }
+  const rows = [['المحصول', 'المساحة (فدان)', 'اليوم', 'التاريخ', 'المرحلة', 'الري (دقيقة × مرات)', 'التسميد (كجم/فدان)', 'التسميد (كجم فعلي)', 'الرش', 'ميكانيكي', 'ملاحظات']];
+  D.secs.forEach(s => s.rows.forEach(r => { const o = r.o, fs = o.f.filter(x => x.n && parseFloat(x.q));
+    rows.push([s.c.name, s.c.area, dayName(r.d), iso(r.d), o.stage || '', irrTxt(o), fs.map(x => `${x.n} ${fmt(x.q)}`).join(' ؛ '), fs.map(x => `${x.n} ${fmt3(x.q * s.c.area)}`).join(' ؛ '), sprayTxt(o), o.mech || '', o.notes || '']); }));
+  const fr = [['السماد', 'الإجمالي (كجم)', 'التفصيل بالمحصول']];
+  D.ft.forEach((t, n) => fr.push([n, Math.round(t.total * 1000) / 1000, Object.entries(t.by).map(([c, x]) => c + ': ' + fmt3(x)).join(' ؛ ')]));
+  const sr = [['الصنف', 'الإجمالي', 'الوحدة']];
+  D.st.forEach((x, k) => { const [n, u] = k.split('|'); sr.push([n, Math.round(x * 1000) / 1000, u]); });
+  const wb = XLSX.utils.book_new(), mk = (a, w) => { const sh = XLSX.utils.aoa_to_sheet(a); sh['!cols'] = w.map(x => ({ wch: x })); return sh; };
+  XLSX.utils.book_append_sheet(wb, mk(rows, [14, 10, 10, 12, 16, 16, 44, 44, 52, 22, 26]), 'البرنامج');
+  if (fr.length > 1) XLSX.utils.book_append_sheet(wb, mk(fr, [24, 14, 50]), 'إجمالي الأسمدة');
+  if (sr.length > 1) XLSX.utils.book_append_sheet(wb, mk(sr, [26, 14, 8]), 'إجمالي المبيدات');
+  wb.Workbook = { Views: [{ RTL: true }] };
+  XLSX.writeFile(wb, 'sanmark_week_' + D.w + '.xlsx');
+  toast('اتحمّل ملف Excel');
+}
+const expBar = () => `<div class="row2 noprint" style="margin:6px 0"><button class="btn sec sm" data-act="expdf">📄 تصدير PDF</button><button class="btn sec sm" data-act="exxl">📊 تصدير Excel</button></div>`;
+
 /* ================= شغل مسئول الرش / التسميد (عرض بس) ================= */
 function viewWork(v){
   const spr = S.role === 'sprayer', w = S.week, ws = weekStart(w), todayIso = iso(new Date());
@@ -441,7 +511,7 @@ function viewHome(v){
     ${trows.length ? `<div class="tw" style="border:0;border-radius:0;max-height:none"><table style="min-width:0"><tr><th>المحصول</th><th>التسميد (كجم فعلي)</th><th>الرش</th></tr>${trows.join('')}</table></div>
     <div style="padding:8px 12px;background:#fffdf3;font-size:13px"><b>الإجمالي:</b> ${[...ftot.entries()].map(([n, x]) => esc(n) + ' ' + fmt3(x) + ' كجم').concat([...stot2.entries()].map(([k, x]) => { const [n, u] = k.split('|'); return esc(n) + ' ' + fmt3(x) + ' ' + u; })).join(' · ') || '—'}</div>`
     : '<div style="padding:12px" class="mut">مفيش تسميد أو رش النهارده في أي محصول.</div>'}</div>`;
-  v.innerHTML = `${todayCard}${weekNav()}
+  v.innerHTML = `${todayCard}${weekNav()}${expBar()}
     <div class="hero"><h2>برنامج أسبوع ${w}</h2>
       <div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
       <div class="st"><span>${cards.length} محصول عليه برنامج</span><span>${nFert} صنف تسميد</span><span>${nSpray} صنف رش</span></div></div>
@@ -543,7 +613,7 @@ function viewProgram(v){
   const inWeek = Array.from({ length: 7 }, (_, i) => iso(addDays(weekStart(S.week), i))).includes(todayIso);
   v.innerHTML = `
     <div class="bar"><div><label>المحصول</label><select id="cropSel">${S.crops.map(c => `<option ${c.name === S.crop ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div></div>
-    ${weekNav()}
+    ${weekNav()}${expBar()}
     <div id="days">${Array.from({ length: 7 }, (_, i) => dayCard(i, null, inWeek ? iso(addDays(weekStart(S.week), i)) === todayIso : i === 0)).join('')}</div>
     <div class="savebar" id="sbar"><button class="btn" data-act="save">حفظ الأسبوع</button><button class="btn sec" data-act="copyweek">نسخ الأسبوع…</button></div>`;
   S.dirty = false;
@@ -946,6 +1016,8 @@ view.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act, card = b.closest('details.day');
   switch (act) {
+    case 'expdf': exportPdf(); break;
+    case 'exxl': exportXlsx(); break;
     case 'editcrop': S.crop = b.dataset.crop; S.tab = 'program'; renderNav(); render(); break;
     case 'wprev': setWeek(S.week - 1); break;
     case 'wnext': setWeek(S.week + 1); break;
