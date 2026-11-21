@@ -56,7 +56,7 @@ details.day.has>summary{background:var(--g2);border-radius:10px}
 .pkl{position:absolute;right:0;left:0;top:100%;z-index:40;background:#fff;border:1px solid var(--bd);border-radius:10px;max-height:240px;overflow:auto;box-shadow:0 6px 18px rgba(0,0,0,.18);margin-top:2px}
 .pko{display:flex;justify-content:space-between;gap:8px;padding:11px 12px;border-bottom:1px solid #eee;cursor:pointer}
 .pko small{color:var(--mut);white-space:nowrap}.pkn{color:#1b5e20;font-weight:700}
-.asg summary{cursor:pointer}.arow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.arow>b{grid-column:1/-1}.pkbox{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.pk2{display:inline-flex;align-items:center;gap:4px;background:#f1f5f1;border:1px solid #cfd8cf;border-radius:16px;padding:4px 10px;font-size:.9em}.pk2 input{width:auto;margin:0}
+.asg summary{cursor:pointer}.arow{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}.arow>b{grid-column:1/-1}.pkbox{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.pk2{display:inline-flex;align-items:center;gap:4px;background:#f1f5f1;border:1px solid #cfd8cf;border-radius:16px;padding:4px 10px;font-size:.9em}.pk2 input{width:auto;margin:0}
 .sh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 12px;background:#f3f7f3;border-top:1px solid var(--bd);font-size:13px}.sh span{color:var(--mut)}
 .sr{border-top:1px dashed var(--bd);padding-top:6px;margin-top:6px}
 .savebar{position:fixed;right:0;left:0;bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--bd);padding:8px 12px;display:flex;gap:8px;z-index:15;justify-content:center}
@@ -147,7 +147,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 15</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 16</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -630,9 +630,9 @@ const teamOpts = (val, storeOnly, k) => {
 function asgCard(){
   const a = asg(S.crop, S.week), row = (title, k, ks) => `<div class="arow"><b>${title}</b>
     <div><label>المسئولين (اختار واحد أو أكتر)</label><div class="pkbox" data-as="${k}">${teamOpts(a[k])}</div></div>
-    ${ks ? `<div><label>مسئول المخزن</label><div class="pkbox" data-as="${ks}">${teamOpts(a[ks], true)}</div></div>` : '<div></div>'}</div>`;
+    </div>`;
   return `<details class="card asg" id="asgCard" ${(a.fert || a.spray || a.mech || a.fertStore || a.sprayStore) ? 'open' : ''}><summary><b>👤 المسئولين عن الأسبوع</b> <span class="mut">(اختياري)</span></summary>
-    ${row('تسميد الأسبوع', 'fert', 'fertStore')}${row('رش الأسبوع', 'spray', 'sprayStore')}${row('المعاملات الميكانيكية', 'mech', '')}</details>`;
+    ${row('تسميد الأسبوع', 'fert', '')}${row('رش الأسبوع', 'spray', '')}${row('المعاملات الميكانيكية', 'mech', '')}</details>`;
 }
 function readAsg(){
   const o = {}; $$('#asgCard [data-as]').forEach(s => { o[s.dataset.as] = [...s.querySelectorAll('input:checked')].map(x => x.value).join(' | '); }); return o;
