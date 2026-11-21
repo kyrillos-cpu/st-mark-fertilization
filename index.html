@@ -103,8 +103,8 @@ table.wo td:first-child{white-space:nowrap}
 .tg{display:inline-block;border-radius:8px;padding:2px 8px;margin:1px 0;font-size:12.5px;line-height:1.5}
 .tg.ir{background:#e3f2fd;color:#0d47a1}.tg.fe{background:#e8f5e9;color:#1b5e20}.tg.sp{background:#fff3e0;color:#a24a00}.tg.me{background:#f3e5f5;color:#6a1b9a}
 .hnone{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px dashed var(--bd);border-radius:12px;padding:10px 12px;margin:8px 0;color:var(--mut)}
-.userrow{display:grid;grid-template-columns:104px 1fr 1fr auto;gap:6px;margin-bottom:6px}
-.alsost{grid-column:1/-1;font-size:12.5px;color:var(--mut);display:flex;gap:6px;align-items:center;margin-top:-2px}
+.userrow{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed var(--bd)}
+.rolechk{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13.5px}.rolechk label{display:flex;gap:5px;align-items:center}
 .itemrow{display:grid;grid-template-columns:1fr 1fr 80px 80px auto;gap:6px;margin-bottom:6px}
 .subtabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px}
 .subtabs button{flex:0 0 auto;border:1px solid var(--bd);background:#fff;border-radius:20px;padding:8px 14px;font:inherit;font-size:14px;color:var(--mut)}
@@ -144,7 +144,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 11</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 12</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -178,7 +178,8 @@ let API = store.get('api') || API_DEFAULT, CODE = store.get('code') || '', PHONE
 const isStore = () => S.role === 'store';
 const isEng = () => S.role === 'engineer';
 const isWorker = () => S.role === 'sprayer' || S.role === 'fertilizer';
-const isKeeper = () => S.role === 'store' || (isWorker() && !!S.canStore);
+const isKeeper = () => S.role !== 'admin' && !!S.canStore;
+const hasRole = r => (S.roles || [S.role]).includes(r);
 const ROLE_NAME = { store: 'مسئول مخزن', engineer: 'مهندس', sprayer: 'مسئول رش', fertilizer: 'مسئول تسميد' };
 const cred = () => CODE ? 'code=' + encodeURIComponent(CODE) : 'phone=' + encodeURIComponent(PHONE);
 const S = { crops: [], lists: { fert: [], stage: [], spray: [] }, settings: {}, program: new Map(), orders: {},
@@ -265,15 +266,15 @@ const CKEY = 'sm_cache_v1';
 const idKey = () => (CODE ? 'c:' + CODE : 'p:' + PHONE) + '@' + API;
 async function fetchData(){
   if (CODE) { const j = await api('getAll'); return { id: idKey(), role: 'admin', who: '', canStore: true, all: j }; }
-  try { const j = await api('getAll'); return { id: idKey(), role: j.role, who: j.name, canStore: !!j.canStore, all: j }; }
+  try { const j = await api('getAll'); return { id: idKey(), role: j.role, roles: j.roles || [j.role], who: j.name, canStore: !!j.canStore, all: j }; }
   catch (e) { const w = await api('whoami'); if (w.role !== 'store') throw e; const j = await api('getStore'); return { id: idKey(), role: 'store', who: w.name, canStore: true, store: j.store }; }
 }
 function applyData(d){
-  S.role = d.role; S.who = d.who || ''; S.canStore = d.role === 'store' || !!d.canStore;
+  S.role = d.role; S.roles = d.roles || [d.role]; S.who = d.who || ''; S.canStore = d.role === 'store' || !!d.canStore;
   if (d.store) { S.store = d.store; S.tab = 'store'; return; }
   const j = d.all;
   S.store = j.store || S.store; S.users = j.users || [];
-  if (isEng() && ['store', 'settings'].includes(S.tab)) S.tab = 'home';
+  if (isEng() && (S.tab === 'settings' || (S.tab === 'store' && !S.canStore))) S.tab = 'home';
   if (isWorker() || isStore()) { if (!['work', 'store'].includes(S.tab) || (S.tab === 'store' && !S.canStore)) S.tab = isStore() ? 'store' : 'work'; }
   S.crops = j.crops; S.lists = j.lists; S.settings = j.settings; S.orders = j.orders;
   S.program = new Map();
@@ -344,7 +345,7 @@ const TABS = [['home', 'الرئيسية'], ['program', 'البرنامج'], ['t
 function renderNav(){
   const lim = isStore() || isWorker();
   $('#nav').style.display = (lim && !S.canStore) ? 'none' : 'flex';
-  const list = lim ? (isStore() ? [['store', 'المخزن'], ['work', 'الجدول']] : [['work', 'الجدول'], ['store', 'المخزن']]) : TABS.filter(t => !isEng() || !['store', 'settings'].includes(t[0]));
+  const list = lim ? (isStore() ? [['store', 'المخزن'], ['work', 'الجدول']] : [['work', 'الجدول'], ['store', 'المخزن']]) : TABS.filter(t => !isEng() || !(t[0] === 'settings' || (t[0] === 'store' && !S.canStore)));
   $('#nav').innerHTML = list.map(([k, n]) => `<button data-tab="${k}" class="${S.tab === k ? 'on' : ''}">${n}</button>`).join('');
 }
 $('#nav').addEventListener('click', e => {
@@ -449,11 +450,11 @@ const expBar = () => `<div class="row2 noprint" style="margin:6px 0"><button cla
 
 /* ================= شغل مسئول الرش / التسميد (عرض بس) ================= */
 function viewWork(v){
-  const P = homeParts(false), w = P.w, ws = P.ws, spr = S.role === 'sprayer', fer = S.role === 'fertilizer';
+  const P = homeParts(false), w = P.w, ws = P.ws, spr = hasRole('sprayer'), fer = hasRole('fertilizer');
   const sprayN = new Set(), fertN = new Set();
   S.crops.forEach(c => { for (let i = 0; i < 7; i++) { const o = S.program.get(c.name + '|' + iso(addDays(ws, i))); if (!o) continue;
     sprayEach(o).forEach(s => sprayN.add(s.n)); o.f.forEach(x => { if (x.n && parseFloat(x.q)) fertN.add(x.n); }); } });
-  const mineSet = spr ? sprayN : fertN;
+  const mineSet = new Set([...(spr ? sprayN : []), ...(fer ? fertN : [])]);
   let reqHtml = '';
   if (spr || fer) {
     const reqs = S.store.requests.filter(r => r.week === w && mineSet.has(r.item));
@@ -461,7 +462,7 @@ function viewWork(v){
     ${reqs.map(r => `<tr><td>${esc(r.item)}</td><td>${esc(r.crop)}</td><td>${fmt3(r.need)} ${esc(r.unit)}</td><td>${r.status === 'done' ? '<span class="okc">اتصرف ' + fmt3(r.issued) + ' ' + esc(r.unit) + '</span>' : '<span class="mut">لسه</span>'}</td></tr>`).join('')}</table></div></div>`
     : `<div class="card mut">مفيش كميات ليك من المخزن للأسبوع ده.</div>`;
   }
-  v.innerHTML = `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— ${ROLE_NAME[S.role]}${isWorker() && S.canStore ? ' + مسئول مخزن' : ''} (الجدول للعرض فقط)</span></div>
+  v.innerHTML = `<div class="card"><b>أهلاً ${esc(S.who || '')}</b> <span class="mut">— ${(S.roles || [S.role]).map(r => ROLE_NAME[r]).join(' + ')} (الجدول للعرض فقط)</span></div>
     ${P.todayCard}${weekNav()}${expBar()}
     <div class="hero"><h2>برنامج أسبوع ${w}</h2><div>من ${dayName(ws)} ${dm(ws)} إلى ${dayName(addDays(ws, 6))} ${dm(addDays(ws, 6))}</div>
       <div class="st"><span>${P.cards.length} محصول عليه برنامج</span><span>${P.nFert} صنف تسميد</span><span>${P.nSpray} صنف رش</span></div></div>
@@ -992,13 +993,14 @@ function viewSettings(v){
       <label>مراحل النمو</label><textarea id="lsStage" rows="5">${esc(S.lists.stage.join('\n'))}</textarea>
       <button class="btn" style="margin-top:8px" data-act="savelists">حفظ القوائم</button></div>
     <div class="card"><h3>المستخدمين بالموبايل</h3><p class="mut">كل واحد بيدخل برقم موبايله (شاشة الدخول ← دخول بالموبايل). المهندس بيسجل البرنامج (وطلبات الصرف بتتبعت للمخزن أول ما يحفظ)، ومسئول المخزن بيشوف المخزن بس، ومسئول الرش والتسميد بيشوفوا شغلهم والكميات اللي هيستلموها (عرض فقط).</p><div id="userRows">
-      ${S.users.map(u => userRow(u.name, u.phone, u.role, u.alsoStore)).join('')}</div>
+      ${S.users.map(u => userRow(u.name, u.phone, u.roles || [u.role])).join('')}</div>
       <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="adduser">+ مسئول</button><button class="btn" data-act="saveusers">حفظ</button></div></div>
     <div class="card"><h3>الحساب</h3><p class="mut" dir="ltr" style="text-align:left;word-break:break-all">${esc(API)}</p>
       <button class="btn warn" data-act="logout">تغيير الرابط / الكود</button></div>`;
 }
 const cropRow = (name, area, old) => `<div class="croprow" data-old="${esc(old)}"><input class="cn" value="${esc(name)}" placeholder="اسم المحصول"><input class="ca" type="number" inputmode="decimal" step="any" value="${esc(area)}" placeholder="فدان"><button class="btn warn sm" data-act="delcrop">حذف</button></div>`;
-const userRow = (name, phone, role, also) => `<div class="userrow"><select class="ur"><option value="store" ${(!role || role === 'store') ? 'selected' : ''}>مسئول مخزن</option><option value="engineer" ${role === 'engineer' ? 'selected' : ''}>مهندس</option><option value="sprayer" ${role === 'sprayer' ? 'selected' : ''}>مسئول رش</option><option value="fertilizer" ${role === 'fertilizer' ? 'selected' : ''}>مسئول تسميد</option></select><input class="un" value="${esc(name)}" placeholder="الاسم"><input class="up" dir="ltr" type="tel" inputmode="tel" value="${esc(phone)}" placeholder="رقم الموبايل"><button class="btn warn sm" data-act="deluser">حذف</button><label class="alsost"><input type="checkbox" class="us" ${also ? 'checked' : ''}> مخزن أيضًا (لمسئول الرش / التسميد)</label></div>`;
+const ROLE_OPTS = [['engineer', 'مهندس'], ['sprayer', 'مسئول رش'], ['fertilizer', 'مسئول تسميد'], ['store', 'مسئول مخزن']];
+const userRow = (name, phone, roles) => `<div class="userrow"><input class="un" value="${esc(name)}" placeholder="الاسم"><input class="up" dir="ltr" type="tel" inputmode="tel" value="${esc(phone)}" placeholder="رقم الموبايل"><button class="btn warn sm" data-act="deluser">حذف</button><div class="rolechk">${ROLE_OPTS.map(([k, n]) => `<label><input type="checkbox" class="rk" value="${k}" ${(roles || []).includes(k) ? 'checked' : ''}> ${n}</label>`).join('')}</div></div>`;
 const linesOf = id => [...new Set($('#' + id).value.split('\n').map(x => x.trim()).filter(Boolean))];
 
 /* ================= الأحداث ================= */
@@ -1057,11 +1059,12 @@ view.addEventListener('click', async e => {
       S.lists = { fert: S.lists.fert, stage: linesOf('lsStage'), spray: S.lists.spray };
       try { await api('saveLists', S.lists); toast('اتحفظت القوائم'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
-    case 'adduser': $('#userRows').insertAdjacentHTML('beforeend', userRow('', '', 'store')); break;
+    case 'adduser': $('#userRows').insertAdjacentHTML('beforeend', userRow('', '', ['store'])); break;
     case 'deluser': b.closest('.userrow').remove(); break;
     case 'saveusers': {
-      const users = $$('.userrow').map(r => ({ name: $('.un', r).value.trim(), phone: $('.up', r).value.trim(), role: $('.ur', r).value, alsoStore: $('.us', r).checked })).filter(u => u.name || u.phone);
+      const users = $$('.userrow').map(r => ({ name: $('.un', r).value.trim(), phone: $('.up', r).value.trim(), roles: $$('.rk', r).filter(x => x.checked).map(x => x.value) })).filter(u => u.name || u.phone);
       if (users.some(u => !u.name || D2(u.phone).replace(/\D/g, '').length < 10)) { toast('اكتب اسم ورقم موبايل صحيح لكل واحد'); break; }
+      if (users.some(u => !u.roles.length)) { toast('علّم على مسئولية واحدة على الأقل لكل واحد'); break; }
       try { await api('saveUsers', { users }); S.users = users; toast('اتحفظ'); } catch (x) { toast('فشل: ' + x.message); } break;
     }
     case 'logout': if (confirm('هتدخل الرابط والكود من جديد؟')) { store.del('api'); store.del('code'); store.del('phone'); try { localStorage.removeItem(CKEY); } catch (e) {} API = API_DEFAULT; CODE = ''; PHONE = ''; showLogin(); } break;
