@@ -147,7 +147,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 17</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 18</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -262,8 +262,13 @@ function sprayEach(o){
     out.push({ n, q: q || 0, u: SU.includes(us[i]) ? us[i] : 'مل', k: k || 0, tot: q ? q * (k || 1) : 0 }); });
   return out;
 }
+// مسئول المخزن بيشوف إجمالي الرش، وباقي الفريق بيشوف الكمية على وحدة ١٠٠ لتر
+function spOne(s){
+  if (isStore()) return s.tot ? s.n + ' ' + fmt3(s.tot) + ' ' + s.u : s.n;
+  return s.q ? s.n + ' ' + fmt3(s.q) + ' ' + s.u + ' / ١٠٠ لتر' + (s.k > 1 ? ' × ' + fmt3(s.k) : '') : s.n;
+}
 function sprayTxt(o){
-  return sprayEach(o).map(s => s.tot ? s.n + ' ' + fmt3(s.tot) + ' ' + s.u : s.n).join(' + ');
+  return sprayEach(o).map(spOne).join(' + ');
 }
 const fmt3 = n => String(Math.round(Number(n) * 1000) / 1000);
 
@@ -409,7 +414,7 @@ function pdfHtml(D){
   const tbl = D.secs.map(s => `<div class="cr"><h2>${esc(s.c.name)} <small>— ${s.c.area} فدان</small></h2>${asgLine(s.a)}<table>
     <tr><th>اليوم</th><th>المرحلة</th><th>الري</th><th>التسميد</th><th>الرش</th><th>ميكانيكي / ملاحظات</th></tr>
     ${s.rows.map(r => { const o = r.o; return `<tr><td class="n">${dayName(r.d)}<br>${dm(r.d)}</td><td>${esc(o.stage)}</td><td>${esc(irrTxt(o))}</td>
-      <td>${fertTxt(o, s.c.area).map(esc).join('<br>')}</td><td>${sprayEach(o).map(x => esc(x.tot ? x.n + ' ' + fmt3(x.tot) + ' ' + x.u : x.n)).join('<br>')}</td>
+      <td>${fertTxt(o, s.c.area).map(esc).join('<br>')}</td><td>${sprayEach(o).map(x => esc(spOne(x))).join('<br>')}</td>
       <td>${esc(o.mech)}${o.mech && o.notes ? '<br>' : ''}${esc(o.notes)}</td></tr>`; }).join('')}</table></div>`).join('');
   const ftb = D.ft.size ? `<div class="cr"><h2>إجمالي الأسمدة المطلوبة (كجم)</h2><table><tr><th>السماد</th><th>الإجمالي</th><th>التفصيل بالمحصول</th></tr>
     ${[...D.ft.entries()].map(([n, t]) => `<tr><td>${esc(n)}</td><td class="n"><b>${fmt3(t.total)}</b></td><td>${Object.entries(t.by).map(([c, x]) => esc(c) + ': ' + fmt3(x)).join(' · ')}</td></tr>`).join('')}</table></div>` : '';
@@ -497,7 +502,7 @@ function homeParts(editable){
       <div class="tw" style="border:0;border-radius:0;max-height:none"><table style="min-width:0"><tr><th>اليوم</th>${head}</tr>${rowsH}</table></div>` : '';
     const fRows = has.filter(r => r.o.irr || r.o.f.some(x => x.n && parseFloat(x.q))).map(r => { const o = r.o;
       return tr(r.d, `<td>${esc(o.stage)}</td><td>${o.irr ? `<span class="tg ir">${esc(o.irr)} د × ${esc(o.freq || 1)}</span>` : ''}</td><td>${o.f.filter(x => x.n && parseFloat(x.q)).map(x => `<div><span class="tg fe">${esc(x.n)} <b>${fmt(x.q)}</b></span></div>`).join('')}</td>`); }).join('');
-    const sRows = has.filter(r => sprayEach(r.o).length).map(r => tr(r.d, `<td>${sprayEach(r.o).map(s => `<div><span class="tg sp">${esc(s.tot ? s.n + ' ' + fmt3(s.tot) + ' ' + s.u : s.n)}</span></div>`).join('')}</td>`)).join('');
+    const sRows = has.filter(r => sprayEach(r.o).length).map(r => tr(r.d, `<td>${sprayEach(r.o).map(s => `<div><span class="tg sp">${esc(spOne(s))}</span></div>`).join('')}</td>`)).join('');
     const mRows = has.filter(r => r.o.mech).map(r => tr(r.d, `<td><span class="tg me">${esc(r.o.mech)}</span>${r.o.notes ? '<div class="mut">' + esc(r.o.notes) + '</div>' : ''}</td>`)).join('');
     cards.push(`<div class="hc"><div class="hh"><div><b>${esc(c.name)}</b> <span class="mut">${c.area ? '— ' + c.area + ' فدان' : ''}</span></div>
       ${editable ? `<button class="btn sec sm" data-act="editcrop" data-crop="${esc(c.name)}">تعديل</button>` : ''}</div>
