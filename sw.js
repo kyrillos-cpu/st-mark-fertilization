@@ -1,5 +1,5 @@
 // Service worker: الأب بيفتح فورًا من الكاش (شكل الأب)، وبيتحدّث في الخلفية. البيانات (الشيت) متتلمسش هنا.
-const CACHE = 'sanmark-v16';
+const CACHE = 'sanmark-v17';
 const SHELL = ['./', 'index.html', 'icon-192.png', 'icon-512.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {

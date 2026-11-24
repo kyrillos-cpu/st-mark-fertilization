@@ -147,7 +147,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 16</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 17</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -249,7 +249,7 @@ function objToRow(crop, date, o){
   r.push(o.spray, nm(o.sq), o.mech, o.notes, o.su || 'مل', nm(o.tk));
   return r;
 }
-// إجمالي الرش للصنف: كمية الأتومايزر × عدد الأتومايزرات
+// إجمالي الرش للصنف: الكمية لكل ١٠٠ لتر × عدد الـ١٠٠ لتر
 // يوم فيه شغل فعلي: ري أو تسميد أو رش أو معاملة ميكانيكية (المرحلة والملاحظات لوحدهم مش شغل)
 const hasWork = o => !!(parseFloat(o.irr) > 0 || o.f.some(x => x.n && parseFloat(x.q) > 0) || o.spray || String(o.mech || '').trim());
 // الرش ممكن يبقى أكتر من صنف: الأسماء والكميات والوحدات والأعداد متخزنة في نفس الخانات مفصولة بـ " | "
@@ -599,9 +599,9 @@ function dayCard(i, o, open){
   const se = sprayEach(o), sshown = Math.max(1, se.length);
   const sr = Array.from({ length: SPN }, (_, j) => { const s = se[j] || { n: '', q: '', u: 'مل', k: '' };
     return `<div class="sr ${j >= sshown ? 'hid' : ''}"><div>${sel('spray', s.n, 'spray')}</div>
-      <div class="row3"><div><label>الكمية / أتومايزر</label><input data-k="sq" type="number" inputmode="decimal" step="any" value="${esc(s.q || '')}"></div>
+      <div class="row3"><div><label>الكمية / ١٠٠ لتر</label><input data-k="sq" type="number" inputmode="decimal" step="any" value="${esc(s.q || '')}"></div>
         <div><label>الوحدة</label><select data-k="su">${SU.map(u => `<option ${u === s.u ? 'selected' : ''}>${u}</option>`).join('')}</select></div>
-        <div><label>عدد الأتومايزرات</label><input data-k="tk" type="number" inputmode="decimal" step="any" value="${esc(s.k || (s.q && s.n ? 1 : ''))}"></div></div></div>`; }).join('');
+        <div><label>عدد الـ١٠٠ لتر</label><input data-k="tk" type="number" inputmode="decimal" step="any" value="${esc(s.k || (s.q && s.n ? 1 : ''))}"></div></div></div>`; }).join('');
   return `<details class="day ${today ? 'today' : ''} ${isEmpty(o) ? '' : 'has'}" data-i="${i}" data-iso="${key}" ${open ? 'open' : ''}>
     <summary><span class="dn">${dayName(d)} ${dm(d)}${today ? ' (النهارده)' : ''}</span><span class="dsum">${esc(summaryOf(o))}</span></summary>
     <div class="body">
@@ -613,7 +613,7 @@ function dayCard(i, o, open){
       <div class="sub">التسميد (كمية لكل فدان)</div>
       ${fr}
       <button class="link" data-act="morefert">+ سماد آخر (لحد 6)</button>
-      <div class="sub">الرش (الأتومايزر ${tank()} لتر)</div>
+      <div class="sub">الرش (الكمية لكل ١٠٠ لتر ماء)</div>
       ${sr}
       <button class="link" data-act="moresp">+ رش آخر (لحد ${SPN})</button>
       <div><label>المعاملات الميكانيكية</label><input data-k="mech" value="${esc(o.mech)}"></div>
@@ -678,7 +678,7 @@ async function saveWeek(){
     const o = readDay(c); dates.push(c.dataset.iso);
     if (o.f.some(x => String(x.q).trim() !== '' && !x.n)) { c.open = true; toast('اختار اسم السماد للكمية المكتوبة'); return; }
     if (o.bad === 'name') { c.open = true; toast('اختار صنف الرش للكمية المكتوبة'); return; }
-    if (o.bad === 'tk') { c.open = true; toast('اكتب عدد الأتومايزرات للرش'); return; }
+    if (o.bad === 'tk') { c.open = true; toast('اكتب عدد الـ١٠٠ لتر للرش'); return; }
     if (!isEmpty(o)) rows.push(objToRow(S.crop, c.dataset.iso, o));
   }
   try {
