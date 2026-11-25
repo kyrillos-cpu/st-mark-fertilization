@@ -147,7 +147,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 18</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 19</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -262,10 +262,11 @@ function sprayEach(o){
     out.push({ n, q: q || 0, u: SU.includes(us[i]) ? us[i] : 'مل', k: k || 0, tot: q ? q * (k || 1) : 0 }); });
   return out;
 }
-// مسئول المخزن بيشوف إجمالي الرش، وباقي الفريق بيشوف الكمية على وحدة ١٠٠ لتر
+// الكل بيشوف الكمية على وحدة ١٠٠ لتر، ومسئول المخزن كمان بيشوف الإجمالي
 function spOne(s){
-  if (isStore()) return s.tot ? s.n + ' ' + fmt3(s.tot) + ' ' + s.u : s.n;
-  return s.q ? s.n + ' ' + fmt3(s.q) + ' ' + s.u + ' / ١٠٠ لتر' + (s.k > 1 ? ' × ' + fmt3(s.k) : '') : s.n;
+  if (!s.q) return s.n;
+  const per = s.n + ' ' + fmt3(s.q) + ' ' + s.u + ' / ١٠٠ لتر' + (s.k > 1 ? ' × ' + fmt3(s.k) : '');
+  return isStore() && s.k > 1 ? per + ' = ' + fmt3(s.tot) + ' ' + s.u : per;
 }
 function sprayTxt(o){
   return sprayEach(o).map(spOne).join(' + ');
@@ -507,7 +508,7 @@ function homeParts(editable){
     cards.push(`<div class="hc"><div class="hh"><div><b>${esc(c.name)}</b> <span class="mut">${c.area ? '— ' + c.area + ' فدان' : ''}</span></div>
       ${editable ? `<button class="btn sec sm" data-act="editcrop" data-crop="${esc(c.name)}">تعديل</button>` : ''}</div>
       ${sec('💧 الري والتسميد (كجم/فدان)', who(a.fert, a.fertStore), '<th>المرحلة</th><th>الري</th><th>التسميد</th>', fRows)}
-      ${sec('🧴 رش الأسبوع', who(a.spray, a.sprayStore), '<th>الرش (الإجمالي)</th>', sRows)}
+      ${sec('🧴 رش الأسبوع', who(a.spray, a.sprayStore), '<th>الرش (على ١٠٠ لتر)</th>', sRows)}
       ${sec('🚜 المعاملات الميكانيكية', who(a.mech, ''), '<th>المعاملة / ملاحظات</th>', mRows)}</div>`);
   });
   // ===== تشغيل اليوم =====
