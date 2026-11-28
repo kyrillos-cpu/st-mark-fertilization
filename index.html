@@ -147,7 +147,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 20</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 21</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -649,6 +649,32 @@ function cropsEditor(){
     <div class="row2" style="margin-top:8px"><button class="btn sec" data-act="addcrop">+ محصول</button><button class="btn" data-act="savecrops">حفظ المحاصيل</button></div>
     <p class="mut">لو غيّرت اسم محصول، بياناته القديمة بتتنقل للاسم الجديد.</p></details>`;
 }
+/* ================= وحدات التسميد (N / P2O5 / K2O / CaO / MgO) ================= */
+const ELS = [['N', 'N'], ['P', 'P₂O₅'], ['K', 'K₂O'], ['Ca', 'CaO'], ['Mg', 'MgO']];
+// وحدة = كجم عنصر صافي للفدان = كجم السماد للفدان × نسبة العنصر / 100
+function unitsFor(c, w0, w1){
+  const a = weekStart(w0), b = addDays(weekStart(w1), 6), u = [0, 0, 0, 0, 0], miss = new Set();
+  S.program.forEach((o, k) => {
+    if (!k.startsWith(c.name + '|')) return;
+    const d = parse(k.slice(c.name.length + 1)); if (d < a || d > b) return;
+    o.f.forEach(x => { const q = parseFloat(x.n && x.q); if (!q) return; const it = itemOf(x.n), an = it && it.an;
+      if (an && an.some(n => n > 0)) an.forEach((n, i) => { u[i] += q * n / 100; }); else miss.add(x.n); });
+  });
+  return { u, miss };
+}
+function unitsCard(){
+  if (!S.crops.length || !S.store || !S.store.items) return '';
+  const w = S.week, fm = n => n ? fmt3(Math.round(n * 100) / 100) : '—';
+  const tbl = (title, w0) => { const miss = new Set();
+    const rows = S.crops.map(c => { const r = unitsFor(c, w0, w); r.miss.forEach(n => miss.add(n));
+      if (!r.u.some(n => n > 0)) return '';
+      return `<tr><td><b>${esc(c.name)}</b><div class="mut">${fmt3(c.area)} فدان</div></td>${r.u.map(n => `<td>${fm(n)}<div class="mut">${n ? fm(n * c.area) + ' كجم' : ''}</div></td>`).join('')}</tr>`; }).join('');
+    return `<h4>${title}</h4>` + (rows ? `<div class="tw"><table class="t"><tr><th>المحصول</th>${ELS.map(e => `<th>${e[1]}</th>`).join('')}</tr>${rows}</table></div>` : '<div class="mut">مفيش أسمدة متسجلة</div>')
+      + (miss.size ? `<div class="mut">أصناف من غير نسب عناصر (مش محسوبة): ${[...miss].map(esc).join('، ')}</div>` : ''); };
+  return `<details class="card"><summary><b>🧪 وحدات التسميد (وحدة/فدان)</b></summary>
+    <p class="mut">الوحدة = كجم عنصر صافي للفدان. تحتها الإجمالي بالكجم على مساحة المحصول. النسب من أعمدة شيت أصناف_المخزن.</p>
+    ${tbl('أسبوع ' + w, w)}${w > 1 ? tbl('من أول البرنامج لحد أسبوع ' + w, 1) : ''}</details>`;
+}
 function viewProgram(v){
   if (!S.crops.length) { v.innerHTML = isAdmin() ? cropsEditor().replace('<details class="card" id="cropsEd">', '<details class="card" id="cropsEd" open>') : '<div class="card">مفيش محاصيل لسه.</div>'; return; }
   const todayIso = iso(new Date());
@@ -657,6 +683,7 @@ function viewProgram(v){
     <div class="bar"><div><label>المحصول</label><select id="cropSel">${S.crops.map(c => `<option ${c.name === S.crop ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}${isAdmin() ? '<option value="__newcrop__">＋ إضافة محصول جديد…</option>' : ''}</select></div></div>
     ${weekNav()}${expBar()}
     ${asgCard()}
+    ${unitsCard()}
     <div id="days">${Array.from({ length: 7 }, (_, i) => dayCard(i, null, inWeek ? iso(addDays(weekStart(S.week), i)) === todayIso : i === 0)).join('')}</div>
     ${isAdmin() ? cropsEditor() : ''}
     <div class="savebar" id="sbar"><button class="btn" data-act="save">حفظ الأسبوع</button><button class="btn sec" data-act="copyweek">نسخ الأسبوع…</button></div>`;
