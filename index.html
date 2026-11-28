@@ -147,7 +147,7 @@ table.wo td:first-child{white-space:nowrap}
 <div id="app" style="display:none">
   <header>
     <div style="display:flex;align-items:center;gap:8px"><img src="icon-192.png" width="32" height="32" alt="" style="border-radius:8px"><h1 dir="ltr">San Mark Fertilization &amp; Spraying</h1></div>
-    <span><small style="opacity:.7">نسخة 21</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
+    <span><small style="opacity:.7">نسخة 22</small> <button id="reload">تحديث</button> <button id="hout" style="display:none">خروج</button></span>
   </header>
   <nav id="nav"></nav>
   <main id="view"></main>
@@ -798,16 +798,32 @@ function viewTotals(v){
   const mult = c => actual ? areaOf(c) : 1;
   const sum = a => a.reduce((s, x) => s + x, 0);
 
-  // جدول سنوي: محاصيل × أسمدة
-  let annual = `<table class="t"><tr><th>المحصول</th>${ferts.map(f => `<th>${esc(f)}</th>`).join('')}<th class="ann">الإجمالي</th></tr>`;
-  const colTot = new Array(ferts.length).fill(0);
-  S.crops.forEach(c => {
+  // جدول سنوي: صنف × محصول (الأهم) - الصنف في الصف والمحاصيل في الأعمدة
+  const crops = S.crops;
+  const cellOf = (f, c) => { const a = ag[c.name].get(f); return a ? sum(a) * mult(c.name) : 0; };
+  let annual = `<table class="t"><tr><th>السماد</th>${crops.map(c => `<th>${esc(c.name)}${actual ? '<br><span class="mut">' + c.area + ' فدان</span>' : ''}</th>`).join('')}<th class="ann">الإجمالي</th></tr>`;
+  const colTot = new Array(crops.length).fill(0);
+  ferts.forEach(f => {
     let rt = 0;
-    const cells = ferts.map((f, i) => { const a = ag[c.name].get(f); const x = a ? sum(a) * mult(c.name) : 0; colTot[i] += x; rt += x; return `<td>${fmt(x)}</td>`; }).join('');
-    annual += `<tr><td>${esc(c.name)}${actual ? ' <span class="mut">(' + c.area + ' فدان)</span>' : ''}</td>${cells}<td class="ann">${fmt(rt)}</td></tr>`;
+    const cells = crops.map((c, i) => { const x = cellOf(f, c); colTot[i] += x; rt += x; return `<td>${x ? fmt(x) : '<span class="mut">–</span>'}</td>`; }).join('');
+    if (rt) annual += `<tr><td>${esc(f)}</td>${cells}<td class="ann">${fmt(rt)}</td></tr>`;
   });
-  if (actual) annual += `<tr class="tot"><td>إجمالي المزرعة</td>${colTot.map(x => `<td>${fmt(x)}</td>`).join('')}<td>${fmt(colTot.reduce((s, x) => s + x, 0))}</td></tr>`;
-  annual += '</table>';
+  annual += `<tr class="tot"><td>الإجمالي</td>${colTot.map(x => `<td>${fmt(x)}</td>`).join('')}<td>${fmt(colTot.reduce((s, x) => s + x, 0))}</td></tr></table>`;
+
+  // المبيدات: صنف × محصول (إجمالي = كمية اللتر × عدد اللترات)
+  const spr = new Map();
+  for (const o of S.program.values()) {
+    const w = weekOfIso(o.date); if (w < 1 || w > 52) continue;
+    sprayEach(o).forEach(x => { if (!x.tot) return; const k = x.n + '|' + x.u; let m = spr.get(k); if (!m) { m = {}; spr.set(k, m); } m[o.crop] = (m[o.crop] || 0) + x.tot; });
+  }
+  const sprCrops = crops.filter(c => [...spr.values()].some(m => m[c.name]));
+  let sprayT = `<table class="t"><tr><th>المبيد</th>${sprCrops.map(c => `<th>${esc(c.name)}</th>`).join('')}<th class="ann">الإجمالي</th></tr>`;
+  [...spr.entries()].sort((a, b) => a[0].localeCompare(b[0], 'ar')).forEach(([k, m]) => {
+    const [n, u] = k.split('|'); let rt = 0;
+    const cells = sprCrops.map(c => { const x = m[c.name] || 0; rt += x; return `<td>${x ? fmt3(x) : '<span class="mut">–</span>'}</td>`; }).join('');
+    sprayT += `<tr><td>${esc(n)} <span class="mut">(${esc(u)})</span></td>${cells}<td class="ann">${fmt3(rt)}</td></tr>`;
+  });
+  sprayT += '</table>';
 
   // جدول أسبوعي
   const all2 = S.tCrop === '*', wActual = all2 || actual;
@@ -827,8 +843,9 @@ function viewTotals(v){
       <div><label>الوحدة</label><select id="tMode"><option value="feddan" ${!actual ? 'selected' : ''}>كجم / فدان</option><option value="actual" ${actual ? 'selected' : ''}>كجم فعلي (× المساحة)</option></select></div>
       <div><label>الجدول الأسبوعي لـ</label><select id="tCrop"><option value="*" ${all2 ? 'selected' : ''}>كل المزرعة</option>${S.crops.map(c => `<option ${c.name === S.tCrop ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
     </div></div>
-    <div class="card"><h3>إجمالي السنة لكل سماد (${actual ? 'كجم فعلي' : 'كجم/فدان'})</h3><div class="tw">${ferts.length ? annual : '<p class="mut" style="padding:12px">لسه مفيش تسميد مسجل.</p>'}</div></div>
-    <div class="card"><h3>إجمالي الأسبوع لكل سماد — ${all2 ? 'كل المزرعة (كجم فعلي)' : esc(S.tCrop) + (wActual ? ' (كجم فعلي)' : ' (كجم/فدان)')}</h3><div class="tw">${ferts.length ? weekly : '<p class="mut" style="padding:12px">لسه مفيش تسميد مسجل.</p>'}</div></div>
+    <div class="card"><h3>إجمالي السنة — كل سماد لكل محصول (${actual ? 'كجم فعلي' : 'كجم/فدان'})</h3><div class="tw">${ferts.length ? annual : '<p class="mut" style="padding:12px">لسه مفيش تسميد مسجل.</p>'}</div></div>
+    ${spr.size ? `<div class="card"><h3>إجمالي السنة — كل مبيد لكل محصول (كمية اللتر × عدد اللترات)</h3><div class="tw">${sprayT}</div></div>` : ''}
+    <details class="card"><summary style="font-weight:700;cursor:pointer">📅 التفصيل الأسبوعي (52 أسبوع)</summary><h3>إجمالي الأسبوع لكل سماد — ${all2 ? 'كل المزرعة (كجم فعلي)' : esc(S.tCrop) + (wActual ? ' (كجم فعلي)' : ' (كجم/فدان)')}</h3><div class="tw">${ferts.length ? weekly : '<p class="mut" style="padding:12px">لسه مفيش تسميد مسجل.</p>'}</div></details>
     <button class="btn sec noprint" onclick="window.print()">طباعة</button>
     <p class="mut">الأسابيع محسوبة من تاريخ بداية البرنامج: ${dm(startDate())}/${startDate().getFullYear()}.</p>`;
 }
